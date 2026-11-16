@@ -5,7 +5,9 @@
 #include "types.h"
 
 #define ASTER_ABI_MAJOR 4
-#define ASTER_ABI_MINOR 3 /* 4.3 (additive): device identity and deferred bundle installation.
+#define ASTER_ABI_MINOR 5 /* 4.5: optional Bluetooth audio-output discovery.
+                          * 4.4: optional background player control and metadata.
+                          * 4.3 (additive): device identity and deferred bundle installation.
                           * 4.1 (additive): continuous effect voices, pitch/gain ramps.
                           * 4.0 (breaking): six aster_net_* imports replace
                           * the per-protocol network/HTTP/MQTT/WebSocket
@@ -80,6 +82,7 @@
 #define ASTER_FEATURE_WEBSOCKET    20u
 #define ASTER_FEATURE_AUDIO_EFFECTS 21u
 #define ASTER_FEATURE_AUDIO_EFFECTS_MEMORY 22u
+#define ASTER_FEATURE_MEDIA_PLAYER 23u
 
 /* CPU arch ids */
 #define ASTER_ARCH_XTENSA 1u

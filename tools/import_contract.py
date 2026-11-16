@@ -90,11 +90,16 @@ def platform_files(files, root):
         ordered = [c for c in existing.get('capabilities', []) if c in capabilities]
         ordered.extend(c for c in capabilities if c not in ordered)
         target = {'schema': 1, 'id': cpu, 'product': api['product'], 'abi': api['abi'],
-                  'system': sources[0]['system'], 'cpu': cpu,
+                  'system': sources[0]['system'], 'cpu': compiler.get('cpu', cpu),
                   'aot_target': compiler['aot_backend'], 'capabilities': ordered,
                   'deployment': existing.get('deployment', {'transport': 'serial',
                       'console': '/dev/ttyUSB0', 'data_glob': '/dev/ttyACM*', 'package_dir': '/SD:'}),
                   'status': 'build-supported', 'name': existing.get('name', cpu.capitalize())}
+        profiles = {t.get('aot_profile') for t in sources if t.get('aot_profile')}
+        if len(profiles) > 1:
+            raise ValueError('firmware AOT profiles differ within CPU platform: ' + cpu)
+        if profiles:
+            target['aot_profile'] = profiles.pop()
         result['targets/' + cpu + '.json'] = (json.dumps(target, indent=2) + '\n').encode()
         platforms += 1
     if not platforms:

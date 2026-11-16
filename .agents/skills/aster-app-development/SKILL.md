@@ -1,6 +1,6 @@
 ---
 name: aster-app-development
-description: 使用 Aster APP SDK ABI 4.3 开发 C/WASM/AOT 应用。当用户要求创建 Aster APP 工程、编写游戏或图形应用、添加触摸交互和设备功能、构建打包部署，或要求只读开发手册进行开发时使用。基于自包含手册，不需要读取 SDK、固件或工具源码。4.0 不兼容 3.x，旧 APP 必须重编后重装。
+description: 使用 Aster APP SDK ABI 4.5 开发 C/WASM/AOT 应用。当用户要求创建 Aster APP 工程、编写游戏或图形应用、添加触摸交互和设备功能、构建打包部署，或要求只读开发手册进行开发时使用。基于自包含手册，不需要读取 SDK、固件或工具源码。4.0 不兼容 3.x，旧 APP 必须重编后重装。
 ---
 
 # Aster APP 开发
@@ -28,3 +28,7 @@ description: 使用 Aster APP SDK ABI 4.3 开发 C/WASM/AOT 应用。当用户�
 MP3 边下载边播放按第 17 节，需要 `audio-out` 和 `audio-stream`。`write` 可能只接受一部分。HTTP 成功结束才 `finish`。模拟器不提供 `audio-stream`。
 
 持续引擎音等使用 ABI 4.1 的连续音效，先读 [连续音效说明](../../../docs/continuous-audio.md)。play_ex 启动一次；参数变化使用 set_params，单独停止使用 effect_stop。新导入必须 abi_min=4.1；不要用低频 FRAME 反复 play 模拟循环。首版切歌、流式音乐交接和 SD 压力连续性尚未验收，不能承诺无缝。
+
+Hi-Fi 开发分支 ABI 4.4 提供可选 `media-player` 服务，先读手册文末 ABI 4.4 节。系统会话可跨 APP 退出保留；不要退出时自动停止。蓝牙接收与本地播放按能力查询和异步状态切换，无后端返回 ENOTSUP；模拟器暂未提供新服务。
+
+蓝牙耳机/音箱输出使用手册 ABI 4.5 节，先检查 BT_SOURCE capability，查询有界设备列表，再按蓝牙地址连接。发送模式和接收模式互斥，文件路径仍受沙箱约束；SBC 是有损，不能标作无损输出。

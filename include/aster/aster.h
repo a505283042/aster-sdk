@@ -27,6 +27,7 @@
 #include "imu.h"
 #include "camera.h"
 #include "audio.h"
+#include "player.h"
 #include "time.h"
 #include "wifi.h"
 #include "network.h"

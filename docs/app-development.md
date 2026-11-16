@@ -2,7 +2,7 @@
 
 配套固件和桌面调试命令见 [开发包使用说明](使用说明.md)。P4 使用 `--target riscv`，lckfb 使用 `--target xtensa`。编译后通过串口部署，或用 `aster sim --profile p4 --app 工程目录` 在桌面调试；外部资源默认从安装包旁的 `resources` 导入，也可用 `--resources` 指定。串口包应通过工程的 `assets` 声明包含资源，不能仅传商城分离的主程序包。模拟器执行 WASM，设备执行匹配 CPU 的 AOT，分别验证行为与实机性能。
 
-适用版本：SDK ABI **4.3.0**；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4 RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。契约基线见 `contract/lock.json`。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
+适用版本：SDK ABI **4.5.0**（Hi-Fi 开发分支）；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4 RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。契约基线见 `contract/lock.json`。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
 
 本文是独立开发所需的完整参考：创建工程、配置、生命周期、绘图、输入、资源、设备接口、构建、部署及排错。本文中的类型和函数签名来自此版本 SDK 的公开契约。阅读本文即可编写 APP；不需要再读取固件代码、SDK 头文件、模板代码或工具实现。编译器会自动使用 SDK 自带的头文件和辅助库。
 
@@ -146,7 +146,7 @@ my-counter/
 - `icon`：可选，工程内 ASTI 格式图标的相对路径，例如 `"icon.bin"`；不能直接填 PNG。
 - `entry`：可选包元数据。普通 C APP 不设置，生命周期函数仍使用固定名称。
 
-支持的能力名称（精确拼写）：`display`、`touch`、`mouse`、`keyboard`、`camera`、`audio-in`、`audio-out`、`wifi`、`bluetooth`、`accelerometer`、`gyroscope`、`filesystem`、`storage.app`、`rtc`、`psram`、`framebuffer`、`network`、`http`、`tls`。名字被接受不代表当前这块板具备该能力。打包只要求 `target_id` 等于平台名 `xtensa`。加速度计、屏幕尺寸等差异在设备上用 `aster_system_has_feature` 和 `aster_display_get_info` 判断，安装不会因为这些板级能力拒绝包。
+支持 `media-player` 可选系统播放器能力（ABI 4.4，具体接口见文末）。其他支持的能力名称（精确拼写）：`display`、`touch`、`mouse`、`keyboard`、`camera`、`audio-in`、`audio-out`、`wifi`、`bluetooth`、`accelerometer`、`gyroscope`、`filesystem`、`storage.app`、`rtc`、`psram`、`framebuffer`、`network`、`http`、`tls`。名字被接受不代表当前这块板具备该能力。打包只要求 `target_id` 等于平台名 `xtensa`。加速度计、屏幕尺寸等差异在设备上用 `aster_system_has_feature` 和 `aster_display_get_info` 判断，安装不会因为这些板级能力拒绝包。
 
 支持的权限名称只有：
 
@@ -687,11 +687,11 @@ SDK 自带 `apps/imucube`：30 FPS 六轴采样、彩色 3D 立方体、重力�
 
 `aster_system_has_feature(ASTER_FEATURE_...)` 的参数是**特性索引**，例如 DISPLAY=0、WIFI=7，不是 `1u << index`。返回 1 有、0 没有；错误为负时同样不能使用。`aster_system_get_abi_version()` 返回打包 u32：`0x00MMmmPP`，当前 `0x00030C00`。需要额外检查时比较主版本兼容及最低版本，不能强制未来 minor 必须完全相等。
 
-虽然头文件声明了 `aster_system_info_t`，当前公开 API 没有 `aster_system_get_info()`。不要为该结构猜测查询函数。
+`aster_system_get_info()` 查询设备身份，调用方式见文末 ABI 4.3 节。
 
 appmgr 需要 appmgr 权限：count 返回安装数；list 用 `aster_app_info_t` version=2 获取 ID、名称、状态、分类和图标信息。start 是单 APP 的切换，调用方会先 stop/destroy，然后启动目标，不是并行启动后台 APP；拒绝启动自己。uninstall 拒绝删除自己或正在运行/暂停的应用。
 
-当前 ABI 为 4.3.0。TCP/UDP 见第 15 节，HTTP/HTTPS 见第 16 节，MP3 流见第 17 节，MQTT 见第 18 节，WebSocket 见第 19 节。应用继续调用原来的函数名，SDK 转到 `aster_net_*`。网络句柄状态变化通过 `ASTER_EVENT_SYS` / `ASTER_SYS_NET_STATE` 通知，见第 5 节。DNS 在连接或发送时解析。Wi-Fi 仍使用 `wifi` 能力和权限。
+当前 ABI 为 4.5.0。TCP/UDP 见第 15 节，HTTP/HTTPS 见第 16 节，MP3 流见第 17 节，MQTT 见第 18 节，WebSocket 见第 19 节。应用继续调用原来的函数名，SDK 转到 `aster_net_*`。网络句柄状态变化通过 `ASTER_EVENT_SYS` / `ASTER_SYS_NET_STATE` 通知，见第 5 节。DNS 在连接或发送时解析。Wi-Fi 仍使用 `wifi` 能力和权限。
 
 其他不存在的接口：没有公开蓝牙通信、线程创建、异步任务通用框架、桌面式文件选择器、原生输入框/键盘、UI 控件树。需要这些功能时在现有能力内自行实现交互，或提出明确 SDK 扩展需求。
 
@@ -2451,7 +2451,7 @@ ASTER_I("aster_ws_close") int32_t aster_ws_close(uint32_t handle);
 
 配额与边界：全设备只有一个 WebSocket 客户端（与诊断 CLI 共用），占用时 connect 返回明确错误而不是排队；它的 TCP 连接与 HTTP/MQTT/TCP-UDP/CLI 共用两个全局传输名额，WSS 与 HTTPS/MQTTS 共用一个已验证 TLS 名额。单条消息最大 4096 字节；不能依据远端声明的长度分配缓存，超限在帧头阶段拒绝。证书由设备管理员信任源校验，APP 无跳过校验选项；WSS 需要已同步的时钟。
 
-完整工程见 `apps/ws-echo`。模拟器默认连 `127.0.0.1:17880`。真机把 URL 改成设备能访问的地址。当前 ABI 为 4.3.0。
+完整工程见 `apps/ws-echo`。模拟器默认连 `127.0.0.1:17880`。真机把 URL 改成设备能访问的地址。当前 ABI 为 4.5.0。
 
 
 ## ABI 4.2 内存音效加载（本地源码候选）
@@ -2480,3 +2480,132 @@ int32_t result = aster_system_get_info(&info, sizeof(info));
 安装器保持现有 ABI/AOT/签名检查，禁止调用者自更新；程序和资源写入非活动版本，完整成功后切换。失败保留原版本和用户 `/data`。最多 4096 个外部资源文件、总计 1 GiB，资源路径与目录深度受限。下载取消、暂存清理和网络来源信任由商城负责。
 
 ABI 4.3 为增量扩展，旧 4.x 应用仍可加载；导入这些新函数的应用应声明最低 ABI 4.3，不能安装到旧 Host。模拟器当前仅在同一会话内保留安装目录；实机将安装结果持久化到 SD 卡。
+
+
+## ABI 4.4 可选系统播放器（开发分支）
+
+能力 `media-player`（feature 23）。APP 设置 `abi="4.4.0"`、`abi_min="4.4"`，需要时声明 `requires=["media-player"]`；只导入新函数就需要 4.4 Host，不能靠 feature 判断在旧固件解析导入。已有 4.3 APP 保持兼容。没有注册适配的 Host 查询返回 ENOTSUP。
+
+播放器是系统持有的单会话，返回桌面后继续播放；APP stop/destroy 只释放自己的界面/目录句柄，不自动停止音乐。首次调用 info 前清零并设置 size/version=1，control 也使用完整的 request 结构。两个接口成功返回 0，错误返回稳定 ASTER 错误。结构定义如下：
+
+```c
+/* SPDX-License-Identifier: MIT */
+#ifndef ASTER_PLAYER_H
+#define ASTER_PLAYER_H
+#include "system.h"
+/* ABI 4.4: optional, system-owned media session; survives APP exit. */
+#define ASTER_PLAYER_CAP_WAV 1u
+#define ASTER_PLAYER_CAP_FLAC 2u
+#define ASTER_PLAYER_CAP_BT_SINK 4u
+#define ASTER_PLAYER_CAP_REMOTE 8u
+#define ASTER_PLAYER_LOCAL 1u
+#define ASTER_PLAYER_BLUETOOTH 2u
+#define ASTER_PLAYER_IDLE 0u
+#define ASTER_PLAYER_OPENING 1u
+#define ASTER_PLAYER_PLAYING 2u
+#define ASTER_PLAYER_PAUSED 3u
+#define ASTER_PLAYER_ENDED 4u
+#define ASTER_PLAYER_ERROR 5u
+#define ASTER_PLAYER_STOPPING 6u
+#define ASTER_PLAYER_F_CONNECTED 1u
+#define ASTER_PLAYER_F_REMOTE 2u
+#define ASTER_PLAYER_PLAY_FILE 1u
+#define ASTER_PLAYER_PAUSE 2u
+#define ASTER_PLAYER_RESUME 3u
+#define ASTER_PLAYER_STOP 4u
+#define ASTER_PLAYER_SEEK 5u
+#define ASTER_PLAYER_BT_ON 6u
+#define ASTER_PLAYER_BT_OFF 7u
+#define ASTER_PLAYER_NEXT 8u
+#define ASTER_PLAYER_PREVIOUS 9u
+typedef struct {
+ uint32_t size,version,capabilities,mode,state,flags;
+ int32_t error;
+ uint32_t rate,bits,channels,position_ms,duration_ms;
+ char title[192],artist[128],album[128],path[256],device[32];
+ uint32_t reserved[4];
+} aster_player_info_t;
+typedef struct {
+ uint32_t size,version,command,value;
+ char path[256]; /* PLAY_FILE: absolute APP sandbox path, NUL terminated. */
+} aster_player_request_t;
+ASTER_I("aster_player_get_info") int32_t aster_player_get_info(aster_player_info_t *info,uint32_t size);
+ASTER_I("aster_player_control") int32_t aster_player_control(const aster_player_request_t *request,uint32_t size);
+#endif
+
+```
+
+PLAY_FILE 的 path 是 NUL 结尾的 APP 沙箱绝对路径（最长 255 字节），例如 `/music/a.flac` 或 `/assets/audio/demo.flac`；需要 fs，`/sd` 还需 sd，映射后才交给服务。调用只提交工作，后续 info 反映 OPENING/PLAYING/ERROR。value 在 SEEK 表示毫秒（4.5 PLAY_FILE 可选输出端点）；其他命令置 0，path 置空。info 中 path 仅用于显示当前文件名，不应当作可重新提交的 APP 沙箱路径；APP 应保存自己选择的路径。
+
+capabilities 分别表示 WAV/FLAC/BT Sink/远端控制；当前 S31 提供四项，无 MP3/AAC/蓝牙耳机 Source 宣称。WAV/FLAC 支持当前输出端点接受的 32/44.1/48/88.2/96 kHz、PCM16/24/32；不支持的文件会在异步状态中报错。BT 接收为 SBC/16 位解码 PCM，不标作无损。position_ms/duration_ms 在当前蓝牙模式为 0（未知），不能画成已知的进度。
+
+BT_ON 异步开启接收，BT_OFF 异步停止；切换源前先停止已有源，轮询至停止完成，再开启下一源，不在 FRAME 内循环等待。BT 模式下 PAUSE/RESUME/NEXT/PREVIOUS 发送 AVRCP 命令，需要手机连接且控制通道可用，单个在途命令返回 EBUSY；请求成功不等于手机音乐应用已经执行。flags 的 CONNECTED/REMOTE 分别表示音频/遥控连接；曲名/歌手/专辑来自手机，可能为空。音量继续使用原 `aster_audio_get_volume/set_volume`，范围 0..100。
+
+示例：
+```c
+aster_player_info_t info={.size=sizeof(info),.version=1};
+int32_t rc=aster_player_get_info(&info,sizeof(info));
+aster_player_request_t request={.size=sizeof(request),.version=1,.command=ASTER_PLAYER_BT_ON};
+if(rc==0 && (info.capabilities&ASTER_PLAYER_CAP_BT_SINK))
+    rc=aster_player_control(&request,sizeof(request));
+```
+
+当前模拟器未提供该服务；新播放器在真机 S31 上验证。P4/lckfb 保留可选接口的 ENOTSUP 行为，不启用 S31 蓝牙协议栈。
+
+
+## ABI 4.5 蓝牙音频输出（开发分支）
+
+新增 `aster_player_bt_list()` 导入，使用它的 APP 最低 ABI 为 4.5。`ASTER_PLAYER_CAP_BT_SOURCE=16` 表示适配了蓝牙音箱/耳机输出；无对应后端返回 ENOTSUP。已发布的 4.x APP 接口和数据结构不变。
+
+控制命令：SOURCE_ON=10 开启发送模式，BT_SCAN=11 搜索，BT_CONNECT=12 连接，BT_DISCONNECT=13 断开；使用现有 request 接口，BT_CONNECT 的 path 填完整蓝牙地址，其他命令 path 留空、value=0。BT_OFF 结束发送或接收模式；切换模式要先停止原源并等待完成。接收/发送互斥，搜索最多保存 8 个音频设备，使用快照中的地址连接，不用会变动的行号。
+
+PLAY_FILE 的 value 从本版起可选 0/1=有线、2=蓝牙输出；文件 path 仍经过原权限和沙箱检查。蓝牙需先连接且完成 SBC 协商。服务在音频线程将文件源 PCM 转为当前内置 SBC 发送器支持的 44.1 kHz 双声道 16 位：不同采样率使用 32-tap、64 相位窗化 sinc 低通滤波器，等采样率仅做位深转换。系统音量为软件衰减。该路径经 SBC 编码为有损音频，不表示有线原位深路径或无损蓝牙。
+
+本地文件播放时 info.rate/bits 仍是源格式；info.flags 的 BT_OUTPUT=4 表示这首音乐选择了蓝牙输出。蓝牙协商输出采样率从设备列表快照的 output_rate 获取（未就绪为 0），queued_bytes 是待编码 PCM 缓冲字节，不是远端播放进度。首版不提供发送模式的耳机按键遥控或 AAC。
+
+```c
+#define ASTER_PLAYER_CAP_BT_SOURCE 16u
+#define ASTER_PLAYER_F_BT_OUTPUT 4u
+#define ASTER_PLAYER_SOURCE_ON 10u
+#define ASTER_PLAYER_BT_SCAN 11u
+#define ASTER_PLAYER_BT_CONNECT 12u
+#define ASTER_PLAYER_BT_DISCONNECT 13u
+#define ASTER_PLAYER_OUTPUT_WIRED 1u
+#define ASTER_PLAYER_OUTPUT_BLUETOOTH 2u
+/* ABI 4.5: bounded Classic audio-device discovery snapshot. Connect uses the
+ * displayed address in request.path, never a possibly stale list index. */
+#define ASTER_PLAYER_BT_DEVICES_MAX 8u
+#define ASTER_PLAYER_BT_IDLE 0u
+#define ASTER_PLAYER_BT_SCANNING 1u
+#define ASTER_PLAYER_BT_CONNECTING 2u
+#define ASTER_PLAYER_BT_CONNECTED 3u
+#define ASTER_PLAYER_BT_ERROR 4u
+#define ASTER_PLAYER_BT_STOPPING 5u
+typedef struct {
+ char address[18],name[62];
+ int32_t rssi;
+ uint32_t flags;
+} aster_player_bt_device_t;
+typedef struct {
+ uint32_t size,version,generation,state,count;
+ int32_t error;
+ uint32_t output_rate,queued_bytes;
+ aster_player_bt_device_t devices[ASTER_PLAYER_BT_DEVICES_MAX];
+} aster_player_bt_list_t;
+ASTER_I("aster_player_bt_list") int32_t aster_player_bt_list(aster_player_bt_list_t *list,uint32_t size);
+```
+
+查询示例：
+```c
+aster_player_bt_list_t list={.size=sizeof(list),.version=1};
+int32_t rc=aster_player_bt_list(&list,sizeof(list));
+if(rc==0){
+    /* list.state: IDLE/SCANNING/CONNECTING/CONNECTED/ERROR/STOPPING。
+       list.count<=8；连接前复制 list.devices[i].address 到 request.path。
+       ERROR 时检查 list.error；搜索/连接不在 UI 回调里等待。 */
+}
+```
+
+发送缓冲按蓝牙会话申请 64 KiB PSRAM，转换器约 4.2 KiB、转换块 4 KiB 在播放期间申请；没有整曲常驻。蓝牙回调只取 PCM，缺数据填静音并计数。停止时先等待媒体工作线程退出，再关闭协议栈并释放队列；超时或协议栈关闭失败保留相关资源并要求重启。
+
+进度操作：SEEK 在 PLAYING/PAUSED 会话中异步定位；原文件已自然播放结束（ENDED）时，从保留的系统文件与输出端点重新打开并定位。不会先播放开头再提交第二次 seek。显式停止或 ERROR 不自动重试；文件可能已删除，重新打开失败时从 info.error 获取错误。

@@ -94,7 +94,7 @@ LIFECYCLE_EXPORTS = [
 ]
 
 VALID_CAPS = {
-    "display", "touch", "mouse", "keyboard", "camera", "audio-in", "audio-out", "audio-stream", "audio-effects", "audio-effects-memory",
+    "display", "touch", "mouse", "keyboard", "camera", "audio-in", "audio-out", "audio-stream", "audio-effects", "audio-effects-memory", "media-player",
     "wifi", "bluetooth", "accelerometer", "gyroscope", "filesystem", "storage.app",
     "rtc", "psram", "framebuffer", "network", "http", "tls", "mqtt", "websocket",
 }

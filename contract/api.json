@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "product": "aster",
-  "abi": "4.3.0",
+  "abi": "4.5.0",
   "imports": {
     "env": [
       "__cxa_allocate_exception",
@@ -79,6 +79,9 @@
       "aster_net_io",
       "aster_net_open",
       "aster_net_status",
+      "aster_player_bt_list",
+      "aster_player_control",
+      "aster_player_get_info",
       "aster_surface_acquire",
       "aster_surface_create",
       "aster_surface_destroy",
@@ -148,6 +151,9 @@
     ]
   },
   "signatures": {
+    "aster_player_bt_list": "(ii)i",
+    "aster_player_get_info": "(ii)i",
+    "aster_player_control": "(ii)i",
     "aster_app_exit": "(i)",
     "aster_app_set_framerate": "(i)i",
     "aster_appmgr_count": "()i",
@@ -274,6 +280,7 @@
     "websocket": 20,
     "audio-effects": 21,
     "audio-effects-memory": 22,
+    "media-player": 23,
     "storage.app": 11
   }
 }
