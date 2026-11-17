@@ -2609,3 +2609,10 @@ if(rc==0){
 发送缓冲按蓝牙会话申请 64 KiB PSRAM，转换器约 4.2 KiB、转换块 4 KiB 在播放期间申请；没有整曲常驻。蓝牙回调只取 PCM，缺数据填静音并计数。停止时先等待媒体工作线程退出，再关闭协议栈并释放队列；超时或协议栈关闭失败保留相关资源并要求重启。
 
 进度操作：SEEK 在 PLAYING/PAUSED 会话中异步定位；原文件已自然播放结束（ENDED）时，从保留的系统文件与输出端点重新打开并定位。不会先播放开头再提交第二次 seek。显式停止或 ERROR 不自动重试；文件可能已删除，重新打开失败时从 info.error 获取错误。
+
+
+### 具体开发板与编译架构
+
+物理板型在 `hardware/`，CPU 编译目标在 `targets/`。鱼鹰光电 P4C5（480×480）使用 `osptek-p4`，立创 ESP32-S3 实战派使用 `lckfb-s3`，FAKE POD NANO PRO 使用 `fakepod-s31`。不能仅凭芯片名推断屏幕、音频、电池或唤醒能力。
+`aster build 工程 --hardware osptek-p4 --aot` 自动选取 `riscv`，并按该板能力和内存校验；产物为 `dist/riscv/osptek-p4/应用ID.ast`。
+不指定 `--hardware` 时仍按 `--target` 构建通用架构包。APP 需要查询运行时显示信息和可选能力，硬件选择不替代这些检查。

@@ -48,7 +48,7 @@ def import_bundle(bundle, root=ROOT):
     previous = root / "contract/lock.json"
     old_names = json.loads(previous.read_text(encoding='utf-8'))["sha256"] if previous.exists() else {}
     for name in old_names:
-        if name not in files and (name.startswith("include/aster/") or name.startswith("targets/")):
+        if name not in files and (name.startswith("include/aster/") or name.startswith("targets/") or name.startswith("hardware/")):
             path = root / name
             if path.resolve().is_relative_to(root):
                 path.unlink(missing_ok=True)
@@ -62,8 +62,8 @@ def import_bundle(bundle, root=ROOT):
 def platform_files(files, root):
     """Verify the exported bundle first, then derive SDK CPU targets.
 
-    Hardware geometry, heap ceilings and available sensors belong to firmware.
-    The SDK retains only platforms with a registered compiler profile.
+    Compiler targets stay architecture based. Preserve firmware-authored board
+    descriptors separately so boards sharing a chip never share wiring/geometry.
     """
     targets = [json.loads(data) for name, data in files.items() if name.startswith('targets/')]
     if not any(t.get('cpu') and t['id'] != t['cpu'] for t in targets):
@@ -76,6 +76,9 @@ def platform_files(files, root):
     result = {name: data for name, data in files.items()
               if not name.startswith('targets/') and name != 'contract/lock.json'}
     platforms = 0
+    for board in targets:
+        if board.get('cpu') in catalog['boards']:
+            result['hardware/' + board['id'] + '.json'] = (json.dumps(board, ensure_ascii=False, indent=2) + '\n').encode()
     for cpu, compiler in catalog['boards'].items():
         sources = [t for t in targets if t.get('cpu') == cpu]
         if not sources:
@@ -115,7 +118,7 @@ def main():
     parser.add_argument("bundle", type=Path)
     args = parser.parse_args()
     import_bundle(args.bundle)
-    print("Imported contract; review and commit include/, contract/, targets/ together.")
+    print("Imported contract; review include/, contract/, targets/, hardware/ together.")
 
 
 if __name__ == "__main__":

@@ -54,7 +54,7 @@ def extract_zip(archive, destination):
 
 
 def copy_sdk(out, boards, platform):
-    for name in ('tools', 'contract', 'include', 'lib', 'templates', 'toolchains', 'docs', '.agents', 'apps', 'assets'):
+    for name in ('tools', 'contract', 'hardware', 'include', 'lib', 'templates', 'toolchains', 'docs', '.agents', 'apps', 'assets'):
         shutil.copytree(ROOT / name, out / name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'build', 'dist'))
     for name in ('README.md', 'LICENSE', 'NOTICE.md', 'requirements.txt', 'requirements-windows.txt', 'requirements-assets.txt'):
         shutil.copy2(ROOT / name, out / name)

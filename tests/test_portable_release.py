@@ -174,9 +174,10 @@ class PortableReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)
             (root/'backends/riscv32').mkdir(parents=True)
-            flat=root/'wamrc';flat.write_bytes(b'xtensa build')
-            riscv=root/'backends/riscv32/wamrc';riscv.write_bytes(b'riscv build')
-            with patch.dict(os.environ,{'ASTER_WAMRC':''}),patch.object(build,'BUNDLED_TOOLCHAIN',root):
+            exe='wamrc.exe' if os.name=='nt' else 'wamrc'
+            flat=root/exe;flat.write_bytes(b'xtensa build')
+            riscv=root/'backends/riscv32'/exe;riscv.write_bytes(b'riscv build')
+            with patch.dict(os.environ,{'ASTER_WAMRC':''}),patch.object(build,'BUNDLED_TOOLCHAIN',root),patch.object(build,'BUNDLED_USABLE',True):
                 self.assertEqual(build.find_wamrc('xtensa'),flat)     # single-CPU packages keep the flat layout
                 self.assertEqual(build.find_wamrc('riscv32'),riscv)   # multi-CPU packages pick per backend
                 self.assertEqual(build.bundled_wamrcs(),{'riscv32':riscv})

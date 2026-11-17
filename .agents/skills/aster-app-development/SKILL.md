@@ -5,7 +5,7 @@ description: 使用 Aster APP SDK ABI 4.5 开发 C/WASM/AOT 应用。当用户�
 
 # Aster APP 开发
 
-配套固件与桌面调试见 [开发包使用说明](../../../docs/使用说明.md)。P4 构建选 `riscv`，lckfb 选 `xtensa`。`aster firmware` 下载固定固件并校验，烧录时显式选择板型和串口。先编译，再用 `aster sim --profile p4`（或 `lckfb`）`--app 工程目录` 导入程序和资源；也可用 `--resources` 指定资源根目录。模拟器运行 WASM，实机运行 AOT。串口安装前返回设备桌面，资源应包含在安装包内。
+配套固件与桌面调试见 [开发包使用说明](../../../docs/使用说明.md)。物理板型使用 `--hardware osptek-p4`（鱼鹰光电 P4C5，480×480）、`--hardware lckfb-s3`（立创实战派）或 `--hardware fakepod-s31`（FAKE POD NANO PRO）。工具自动选择 AOT 架构；`riscv`/`xtensa` 仅表示编译架构，不代表具体硬件。板型构建产物位于 `dist/架构/板型/`。`aster firmware` 下载固定固件并校验，烧录时显式选择板型和串口。先编译，再用 `aster sim --profile osptek-p4`（或 `lckfb`）`--app 工程目录` 导入程序和资源；也可用 `--resources` 指定资源根目录。模拟器运行 WASM，实机运行 AOT。串口安装前返回设备桌面，资源应包含在安装包内。
 
 首先完整读取 [SDK 开发手册](../../../docs/app-development.md)。该路径相对本 SKILL.md；它是唯一开发参考，包含完整示例、公开 ABI、辅助库、工程配置和命令。
 

@@ -4,6 +4,10 @@
   "abi": "4.5.0",
   "sha256": {
     "contract/api.json": "cdbba924f57f4dce748cc7b8831839109c0ef2855f3882c4e1702a76dc8e9a4d",
+    "hardware/fakepod-s31.json": "25172bb9ec6757a8f1efa1c086664d01e48ae1e0dff7f859773bf3c0e64b21ba",
+    "hardware/lckfb-s3.json": "d3455b8bf5b141ec3b2ea5dd737a8e0cc74e810239a6dd6437f1e27927299513",
+    "hardware/osptek-p4.json": "f3a46e0c3b9134f3b3c95b89ef6aaef9edfa71b508be4c248e8ddbe7ef28af2f",
+    "hardware/waveshare-35b.json": "93f3e4ac47ea0ad3ed1afa6f7dd3b48d0faaeeeb622b7bf8332029364eb9a285",
     "include/aster/app.h": "9c067bce70ee9d969301975ec310b06c739d7f258136787a0039383ad1069ecf",
     "include/aster/appmgr.h": "d5485cd34eaca8f17b56ea369d6799c08dc9615395f4d449455b070e4a167121",
     "include/aster/aster.h": "56d53e0c988ecf8ceeae89f9b8b11b70f76ef32aed887e1117cc9e2f4b1183e0",

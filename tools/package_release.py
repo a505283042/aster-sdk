@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EXES = ('aster.exe', 'aster-toolchain.exe', 'aster-device.exe')
-FOLDERS = ('docs', '.agents', 'include', 'contract', 'targets', 'lib',
+FOLDERS = ('docs', '.agents', 'include', 'contract', 'targets', 'hardware', 'lib',
            'templates', 'apps', 'assets', 'tools', 'tests', 'bin')
 FILES = ('README.md', 'LICENSE', 'NOTICE.md', 'requirements.txt', 'requirements-windows.txt')
 IGNORE = shutil.ignore_patterns('build', 'dist', '__pycache__', '*.pyc', '.venv*', '*.log')

@@ -113,6 +113,7 @@ $sdkData = @(
     "--add-data", "$(Join-Path $out 'release.json');.",
     "--add-data", "$(Join-Path $root 'contract');contract",
     "--add-data", "$(Join-Path $root 'targets');targets",
+    "--add-data", "$(Join-Path $root 'hardware');hardware",
     "--add-data", "$(Join-Path $root 'include');include"
 )
 $toolData = @(

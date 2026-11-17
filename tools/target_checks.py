@@ -33,6 +33,9 @@ def validate_manifest(manifest, target):
         raise ValueError("invalid initial memory/stack for target")
     if maximum and (maximum <= 0 or maximum % 65536 or maximum < initial):
         raise ValueError("invalid maximum memory for target")
+    limit = target.get('memory', {}).get('max_linear', 0)
+    if limit and max(initial, maximum) > limit:
+        raise ValueError("application memory exceeds selected hardware ceiling")
 
 
 def validate_app(app, target):

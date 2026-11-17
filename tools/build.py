@@ -457,14 +457,14 @@ def build_aot(app: App, wasm_path: Path, aot_path: Path, target: str = "xtensa")
     source = wasm_path
     if app.target.get("aot_profile") == "rv32-ilp32f-interruptible":
         if target != "riscv32":
-            raise SystemExit("ESP32-P4 requires the riscv32 AOT backend")
+            raise SystemExit("rv32-ilp32f-interruptible requires the riscv32 AOT backend")
         from aot_memory import interruptible_wasm
         # WAMR expects a numeric size level. The generic "s" spelling is
         # parsed as zero and selects an unsupported RV32 large code model.
         command[-1] = "--size-level=3"
         maximum = app.max_memory or 8 * 1024 * 1024
         if not 65536 <= maximum <= 16 * 1024 * 1024:
-            raise SystemExit("ESP32-P4 application memory must be 64 KiB..16 MiB")
+            raise SystemExit("RV32 application memory must be 64 KiB..16 MiB")
         source = aot_path.with_suffix(".interruptible.wasm")
         source.write_bytes(interruptible_wasm(wasm_path.read_bytes(), maximum // 65536))
         command += ["--target-abi=ilp32f", "--cpu=generic-rv32", "--cpu-features=+m,+a,+f,+c",
@@ -601,6 +601,7 @@ def main(argv=None) -> int:
     ap.add_argument("--target", dest="board", default=None,
                     help="platform target (see targets/); supplies the default "
                          "--aot-target")
+    ap.add_argument("--hardware", default=None, help="physical board descriptor from hardware/; independent of CPU target")
     ap.add_argument("--aot-target", default=None,
                     help="wamrc backend (" + "|".join(sorted(aster_board.AOT_BACKENDS)) +
                          "; default: the platform aot_target)")
@@ -618,12 +619,16 @@ def main(argv=None) -> int:
         print("cleaned")
         return 0
 
-    target = aster_board.get(args.board)
+    target = aster_board.get_hardware(args.hardware, args.board) if args.hardware else aster_board.get(args.board)
     if args.aot_target and args.aot_target != target["aot_target"]:
         ap.error("--aot-target conflicts with the selected target")
     args.aot_target = target["aot_target"]
     BUILD_ROOT = output_root() / "build" / target["id"]
     OUT_DIR = output_root() / "dist" / target["id"]
+    if args.hardware:
+        BUILD_ROOT /= args.hardware
+        OUT_DIR /= args.hardware
+        print("Hardware: " + target['hardware_name'] + " [" + target['board_id'] + "]")
 
     targets: list[Path] = list(args.apps)
     if args.all:

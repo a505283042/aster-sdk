@@ -23,6 +23,8 @@ class PlatformImport(unittest.TestCase):
             self.assertEqual(target['aot_profile'],'rv32-ilp32f-interruptible')
             self.assertIn('media-player',target['capabilities'])
             self.assertNotIn('targets/s31.json',result)
+            self.assertEqual(json.loads(result['hardware/p4.json'])['id'],'p4')
+            self.assertEqual(json.loads(result['hardware/s31.json'])['id'],'s31')
             bad=json.loads(files['targets/s31.json']);bad['aot_profile']='different-profile'
             files['targets/s31.json']=json.dumps(bad).encode()
             with self.assertRaisesRegex(ValueError,'profiles differ'):

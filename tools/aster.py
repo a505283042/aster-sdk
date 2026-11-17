@@ -177,11 +177,19 @@ def install(args):
 
 def build_project(args):
     project = ROOT if args.all else project_path(args.project)
-    target = target_for(args.target, None if args.all else project)
+    hardware = getattr(args, 'hardware', None)
+    if hardware:
+        import aster_board
+        selected = aster_board.get_hardware(hardware, args.target)
+        target = selected['id']
+    else:
+        target = target_for(args.target, None if args.all else project)
     command = tool_command('build')
-    if os.name == 'nt' and command[0].endswith('.exe'):
+    if os.name == 'nt' and len(command)==1 and command[0].endswith('.exe'):
         command.append('build')
     command += ['--target', target]
+    if hardware:
+        command += ['--hardware', hardware]
     command += ['--all'] if args.all else [str(project)]
     for option in ('aot', 'no_aot', 'clean'):
         if getattr(args, option, False):
@@ -270,6 +278,7 @@ def main(argv=None):
         cmd = commands.add_parser(name)
         cmd.add_argument('project', nargs='?', default='.')
         cmd.add_argument('--target')
+        cmd.add_argument('--hardware', help='physical board ID from hardware/')
         aot = cmd.add_mutually_exclusive_group()
         aot.add_argument('--aot', action='store_true')
         aot.add_argument('--no-aot', action='store_true')
@@ -316,13 +325,20 @@ def main(argv=None):
             parser.error('run does not accept --all or --clean')
         if args.command == 'run' and args.no_build:
             project = project_path(args.project)
-            target = target_for(args.target, project)
+            if args.hardware:
+                import aster_board
+                target = aster_board.get_hardware(args.hardware, args.target)['id']
+            else:
+                target = target_for(args.target, project)
         else:
             project, target = build_project(args)
         if args.command == 'build':
             return 0
         manifest = tomllib.loads((project / 'app.toml').read_text(encoding='utf-8'))
-        args.package = project / 'dist' / target / (manifest['app']['id'] + '.ast')
+        args.package = project / 'dist' / target
+        if args.hardware:
+            args.package /= args.hardware
+        args.package /= manifest['app']['id'] + '.ast'
         args.run = True
     else:
         target = target_for(args.target)
