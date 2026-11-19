@@ -8,6 +8,7 @@
 #define ASTER_PLAYER_CAP_BT_SINK 4u
 #define ASTER_PLAYER_CAP_REMOTE 8u
 #define ASTER_PLAYER_CAP_BT_SOURCE 16u
+#define ASTER_PLAYER_CAP_SPECTRUM 32u
 #define ASTER_PLAYER_LOCAL 1u
 #define ASTER_PLAYER_BLUETOOTH 2u
 #define ASTER_PLAYER_IDLE 0u
@@ -40,6 +41,8 @@ typedef struct {
  int32_t error;
  uint32_t rate,bits,channels,position_ms,duration_ms;
  char title[192],artist[128],album[128],path[256],device[32];
+ /* CAP_SPECTRUM: reserved[0] is left and reserved[1] is right. Each holds
+  * four unsigned 8-bit levels, lowest band in the least significant byte. */
  uint32_t reserved[4];
 } aster_player_info_t;
 typedef struct {

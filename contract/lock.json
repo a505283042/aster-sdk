@@ -30,7 +30,7 @@
     "include/aster/mqtt.h": "8b56dce7525b166b24721b982afc9311bd7676c7a37c08201002d97c440ac6a0",
     "include/aster/net.h": "3339e9a0a88cbd4a8c4d33cae1ac8633051800ccf9b2c3864f75d923a66c3cca",
     "include/aster/network.h": "73ce69bbfd8de7c64e21ba25555e0e315bae679b2e56806d3504c6741be3b5b7",
-    "include/aster/player.h": "6f70e5c6cf5f3a447c90bc25b5ce498bb83369b3bc41d9ed4b4a8d80219c7da8",
+    "include/aster/player.h": "676f54872f75e904989471161fc0d3bb133ff9455a446950232c075c83d54cf2",
     "include/aster/sensor.h": "5d8b2b6f211d1cb06d4e5378f0b083100ad48db40d068f6317ae61fb634aca72",
     "include/aster/surface.h": "8cd5d99b21da830c4945e652a2a5981dc844dcc0f06fa5af198dd144d21e54f8",
     "include/aster/system.h": "64c4c3fd4b1362adb9c37793c097e0d80f5434365bc7cfa928ba13b45c838b16",
