@@ -1,8 +1,10 @@
 """Execute SDK Scene/layout/widgets against a pixel-checking transactional Host."""
-import subprocess,tempfile,unittest
+
+import subprocess, tempfile, unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]
-HARNESS=r'''
+
+ROOT = Path(__file__).resolve().parents[1]
+HARNESS = r'''
 #include <assert.h>
 #include <string.h>
 #include <aster_widgets.h>
@@ -54,14 +56,42 @@ static void setup(uint32_t capacity){
 }
 static inline uint32_t rect(uint32_t parent,aster_box_t b,uint16_t c){uint32_t id;assert(!aster_scene_add(&scene,parent,ASTER_NODE_RECT,&id));assert(!aster_scene_set_box(&scene,id,b));assert(!aster_scene_set_color(&scene,id,c,true));return id;}
 '''
+
+
 class Scene(unittest.TestCase):
- def run_c(self,body):
-  with tempfile.TemporaryDirectory() as d:
-   exe=Path(d)/'check'
-   p=subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-I'+str(ROOT/'include'),'-I'+str(ROOT/'lib/aster'),'-x','c','-',*[str(ROOT/'lib/aster'/n) for n in ('aster_scene.c','aster_layout.c','aster_widgets.c')],'-o',str(exe)],input=HARNESS+body,text=True,capture_output=True)
-   self.assertEqual(p.returncode,0,p.stderr);subprocess.run([str(exe)],check=True,timeout=10)
- def test_damage_z_clipping_alpha_removal_pool_and_atomic_failure(self):
-  self.run_c(r'''
+    def run_c(self, body):
+        with tempfile.TemporaryDirectory() as d:
+            exe = Path(d) / 'check'
+            p = subprocess.run(
+                [
+                    'cc',
+                    '-std=c11',
+                    '-Wall',
+                    '-Wextra',
+                    '-Werror',
+                    '-Wno-misleading-indentation',
+                    '-I' + str(ROOT / 'include'),
+                    '-I' + str(ROOT / 'lib/aster'),
+                    '-x',
+                    'c',
+                    '-',
+                    *[
+                        str(ROOT / 'lib/aster' / n)
+                        for n in ('aster_scene.c', 'aster_layout.c', 'aster_widgets.c')
+                    ],
+                    '-o',
+                    str(exe),
+                ],
+                input=HARNESS + body,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(p.returncode, 0, p.stderr)
+            subprocess.run([str(exe)], check=True, timeout=10)
+
+    def test_damage_z_clipping_alpha_removal_pool_and_atomic_failure(self):
+        self.run_c(
+            r'''
 int main(void){
  setup(8);uint32_t a=rect(0,(aster_box_t){1,1,5,5},0xf800),b=rect(0,(aster_box_t){3,3,4,4},0x07e0);
  assert(aster_scene_render(&scene)==1&&screen[3*W+3]==0x07e0);
@@ -81,9 +111,12 @@ int main(void){
  assert(!aster_scene_remove(&scene,a));assert(!aster_scene_add(&scene,0,ASTER_NODE_RECT,&id)&&id!=a);assert(aster_scene_set_color(&scene,a,0,true)==ASTER_EBADF);
  assert(!aster_scene_remove(&scene,id));scene.next_id=UINT32_MAX;assert(aster_scene_add(&scene,0,ASTER_NODE_RECT,&id)==ASTER_ENOSPC);return 0;
 }
-''')
- def test_font_epoch_survives_other_draw_ack_and_cache_is_quiet(self):
-  self.run_c(r'''
+'''
+        )
+
+    def test_font_epoch_survives_other_draw_ack_and_cache_is_quiet(self):
+        self.run_c(
+            r'''
 int main(void){
  setup(4);ready_bitmap=0;uint32_t id;assert(!aster_scene_add(&scene,0,ASTER_NODE_TEXT,&id));assert(!aster_scene_set_text(&scene,id,"abc",12,0xffff));assert(!aster_scene_set_box(&scene,id,(aster_box_t){1,1,0,0}));
  assert(aster_scene_render(&scene)==1);unsigned measured=metrics,drawn=draws;assert(screen[W+1]==0x1234);
@@ -95,9 +128,12 @@ int main(void){
  assert(aster_scene_render(&scene)==1&&metrics==cached&&screen[W+1]==0x1234&&screen[W+3]==0xffff);
  caps=1;aster_scene_t old;aster_scene_node_t pool[1];assert(aster_scene_init(&old,&ge,pool,1,0,0)==ASTER_ENOTSUP);return 0;
 }
-''')
- def test_layout_atomic_overflow_and_scroll_cancels_button_click(self):
-  self.run_c(r'''
+'''
+        )
+
+    def test_layout_atomic_overflow_and_scroll_cancels_button_click(self):
+        self.run_c(
+            r'''
 int main(void){
  aster_layout_t l={ASTER_LAYOUT_ROW,ASTER_ALIGN_CENTER,0,0,1,1};aster_layout_item_t items[2]={{2,3,1},{2,3,3}};aster_box_t out[2],old[2];int32_t cw=99,ch=99;
  assert(!aster_layout_compute(&l,11,8,items,2,out,&cw,&ch));assert(out[0].w==3&&out[1].w==5&&out[1].x==5&&out[0].y==2);
@@ -109,10 +145,12 @@ int main(void){
  aster_scene_node_t *p=NULL;for(int i=0;i<12;i++)if(nodes[i].id==parent)p=&nodes[i];assert(p&&p->scroll_y==6);assert(aster_scene_hit_test(&scene,5,25)==0);
  uint16_t saved[W*H];memcpy(saved,screen,sizeof(saved));l.scroll=0;assert(!aster_scene_set_layout(&scene,parent,l));assert(aster_scene_render(&scene)==ASTER_ENOSPC&&!memcmp(saved,screen,sizeof(saved)));l.scroll=1;assert(!aster_scene_set_layout(&scene,parent,l));assert(aster_scene_render(&scene)>=0);return 0;
 }
-''')
+'''
+        )
 
- def test_grid_canvas_cache_depth_and_invalid_text(self):
-  self.run_c(r'''int main(void){
+    def test_grid_canvas_cache_depth_and_invalid_text(self):
+        self.run_c(
+            r'''int main(void){
  aster_layout_t grid={ASTER_LAYOUT_GRID,ASTER_ALIGN_STRETCH,2,0,1,1};
  aster_layout_item_t items[3]={{0,4,0},{0,2,0},{0,3,0}};aster_box_t out[3];int32_t cw,ch;
  assert(!aster_layout_compute(&grid,15,12,items,3,out,&cw,&ch));
@@ -133,4 +171,5 @@ int main(void){
  assert(aster_scene_add(&scene,parent,ASTER_NODE_CONTAINER,&id)==ASTER_ENOSPC);
  return 0;
 }
-''')
+'''
+        )

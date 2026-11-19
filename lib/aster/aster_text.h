@@ -38,8 +38,8 @@
 #include "aster_gfx.h"
 
 #ifndef ASTER_LIBC_H
-void  *memcpy(void *dst, const void *src, unsigned long n);
-void  *memset(void *s, int c, unsigned long n);
+void *memcpy(void *dst, const void *src, unsigned long n);
+void *memset(void *s, int c, unsigned long n);
 unsigned long strlen(const char *s);
 #endif
 
@@ -60,7 +60,8 @@ static const aster_text_face_t ASTER_TEXT_FACES[] = ASTER_FONT_FACE_METRICS;
 /* Select the nearest published native size; ties follow contract order. */
 static inline int aster_text_snap(int px)
 {
- if(px==0) return ASTER_TEXT_FACES[0].px;
+	if (px == 0)
+		return ASTER_TEXT_FACES[0].px;
 	int best = -1, pick = ASTER_TEXT_FACES[0].px;
 	uint32_t i;
 
@@ -80,19 +81,23 @@ static inline int aster_text_snap(int px)
 
 /* Scale a design text role to display geometry, then select native glyphs.
  * reference_px is the desired role at 320x480, not a bitmap zoom factor. */
-static inline int aster_text_for_display(int reference_px,uint32_t width,uint32_t height)
+static inline int aster_text_for_display(int reference_px, uint32_t width, uint32_t height)
 {
- if(reference_px<=0 || !width || !height) return ASTER_TEXT_FACES[0].px;
- uint64_t x=(uint64_t)width*(uint32_t)reference_px*256u/320u;
- uint64_t y=(uint64_t)height*(uint32_t)reference_px*256u/480u;
- uint64_t request=x<y?x:y,best=UINT64_MAX;
- int pick=ASTER_TEXT_FACES[0].px;
- for(uint32_t i=0;i<ASTER_TEXT_FACE_N;i++) {
-  uint64_t size=(uint64_t)ASTER_TEXT_FACES[i].px*256u;
-  uint64_t d=size>request?size-request:request-size;
-  if(d<best) {best=d;pick=ASTER_TEXT_FACES[i].px;}
- }
- return pick;
+	if (reference_px <= 0 || !width || !height)
+		return ASTER_TEXT_FACES[0].px;
+	uint64_t x = (uint64_t)width * (uint32_t)reference_px * 256u / 320u;
+	uint64_t y = (uint64_t)height * (uint32_t)reference_px * 256u / 480u;
+	uint64_t request = x < y ? x : y, best = UINT64_MAX;
+	int pick = ASTER_TEXT_FACES[0].px;
+	for (uint32_t i = 0; i < ASTER_TEXT_FACE_N; i++) {
+		uint64_t size = (uint64_t)ASTER_TEXT_FACES[i].px * 256u;
+		uint64_t d = size > request ? size - request : request - size;
+		if (d < best) {
+			best = d;
+			pick = ASTER_TEXT_FACES[i].px;
+		}
+	}
+	return pick;
 }
 
 static inline const aster_text_face_t *aster_text_face(int px)
@@ -202,7 +207,7 @@ static inline int aster_text_ready(uint32_t px)
  *   NONE  - must not start a line here (Latin word interiors, CJK closers)
  *   PLAIN - may start a line here (CJK ideographs, kana, fullwidth forms)
  *   SPACE - may start here, and the space run itself is dropped */
-#define ASTER_TB_NONE  0u
+#define ASTER_TB_NONE 0u
 #define ASTER_TB_PLAIN 1u
 #define ASTER_TB_SPACE 2u
 
@@ -212,13 +217,28 @@ static inline uint32_t aster_text_brk(uint32_t cp)
 		return ASTER_TB_SPACE;
 	}
 	if (cp < 0x2E80u) {
-		return ASTER_TB_NONE;	/* ASCII/Latin/Greek: keep words whole */
+		return ASTER_TB_NONE; /* ASCII/Latin/Greek: keep words whole */
 	}
-	switch (cp) {			/* CJK closers: never start a line */
-	case 0x3001u: case 0x3002u: case 0x300Bu: case 0x300Du: case 0x3011u:
-	case 0x3015u: case 0xFF01u: case 0xFF09u: case 0xFF0Cu: case 0xFF0Eu:
-	case 0xFF1Bu: case 0xFF1Du: case 0xFF1Fu: case 0x2019u: case 0x201Du:
-	case 0x2026u: case 0x2014u: case 0x00B7u: case 0x203Au:
+	switch (cp) { /* CJK closers: never start a line */
+	case 0x3001u:
+	case 0x3002u:
+	case 0x300Bu:
+	case 0x300Du:
+	case 0x3011u:
+	case 0x3015u:
+	case 0xFF01u:
+	case 0xFF09u:
+	case 0xFF0Cu:
+	case 0xFF0Eu:
+	case 0xFF1Bu:
+	case 0xFF1Du:
+	case 0xFF1Fu:
+	case 0x2019u:
+	case 0x201Du:
+	case 0x2026u:
+	case 0x2014u:
+	case 0x00B7u:
+	case 0x203Au:
 		return ASTER_TB_NONE;
 	default:
 		return ASTER_TB_PLAIN;
@@ -229,8 +249,14 @@ static inline uint32_t aster_text_brk(uint32_t cp)
 static inline int aster_text_no_end(uint32_t cp)
 {
 	switch (cp) {
-	case 0x300Cu: case 0x300Eu: case 0x3010u: case 0x3014u: case 0xFF08u:
-	case 0xFF3Bu: case 0x2018u: case 0x201Cu:
+	case 0x300Cu:
+	case 0x300Eu:
+	case 0x3010u:
+	case 0x3014u:
+	case 0xFF08u:
+	case 0xFF3Bu:
+	case 0x2018u:
+	case 0x201Cu:
 		return 1;
 	default:
 		return 0;
@@ -258,8 +284,8 @@ static inline uint32_t aster_text_skip_sp(const char *s, uint32_t i, uint32_t le
  * URL -- or a Latin word on a 12 px face in a 200 px column).
  *
  * Never splits a UTF-8 sequence: offsets only ever land on a lead byte. */
-static inline uint32_t aster_text_line(uint32_t px, const char *src, uint32_t len,
-				     int32_t maxw, uint32_t *out_len)
+static inline uint32_t aster_text_line(uint32_t px, const char *src, uint32_t len, int32_t maxw,
+                                       uint32_t *out_len)
 {
 	uint32_t i = 0, brk = 0, brk_kind = ASTER_TB_NONE;
 	int32_t w = 0;
@@ -293,8 +319,8 @@ static inline uint32_t aster_text_line(uint32_t px, const char *src, uint32_t le
 			if (brk > 0) {
 				*out_len = brk;
 				return brk_kind == ASTER_TB_SPACE
-					       ? aster_text_skip_sp(src, brk, len)
-					       : brk;
+				               ? aster_text_skip_sp(src, brk, len)
+				               : brk;
 			}
 			*out_len = i;
 			return i;
@@ -304,7 +330,7 @@ static inline uint32_t aster_text_line(uint32_t px, const char *src, uint32_t le
 		i += k;
 	}
 	*out_len = i;
-	return i < len ? i + 1u : len;	/* eat the '\n' */
+	return i < len ? i + 1u : len; /* eat the '\n' */
 }
 
 /* The truncation marker is three ASCII full stops, NOT U+2026. The bake
@@ -340,11 +366,10 @@ static inline uint32_t aster_text_line(uint32_t px, const char *src, uint32_t le
  * the loop below computes -- unless the run contains '\n', where the firmware
  * reports the widest LINE rather than the total. Callers pass single-line runs
  * (file names, titles, one wrapped lyric line), so the two agree. */
-static inline int32_t aster_text_elide(uint32_t px, const char *src, uint32_t len,
-				     int32_t maxw, char *dst, uint32_t dst_max)
+static inline int32_t aster_text_elide(uint32_t px, const char *src, uint32_t len, int32_t maxw,
+                                       char *dst, uint32_t dst_max)
 {
-	int32_t ell_w = aster_gfx_text_w(px, ASTER_TEXT_ELLIPSIS,
-				       ASTER_TEXT_ELLIPSIS_N);
+	int32_t ell_w = aster_gfx_text_w(px, ASTER_TEXT_ELLIPSIS, ASTER_TEXT_ELLIPSIS_N);
 	int32_t full;
 	uint32_t i = 0, o = 0;
 	int32_t w = 0;
@@ -380,8 +405,7 @@ static inline int32_t aster_text_elide(uint32_t px, const char *src, uint32_t le
 		if (aw < 0) {
 			break;
 		}
-		if (w + aw + ell_w > maxw ||
-		    o + k + ASTER_TEXT_ELLIPSIS_N >= dst_max) {
+		if (w + aw + ell_w > maxw || o + k + ASTER_TEXT_ELLIPSIS_N >= dst_max) {
 			break;
 		}
 		memcpy(dst + o, src + i, k);
@@ -389,7 +413,7 @@ static inline int32_t aster_text_elide(uint32_t px, const char *src, uint32_t le
 		w += aw;
 		i += k;
 	}
-	if (i < len) {			/* truncated: mark it */
+	if (i < len) { /* truncated: mark it */
 		if (o + ASTER_TEXT_ELLIPSIS_N >= dst_max) {
 			dst[0] = 0;
 			return -1;

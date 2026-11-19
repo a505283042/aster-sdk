@@ -24,23 +24,23 @@
 #include <aster_imports.h>
 #include <aster_gfx.h>
 
-#define GAL_MAX    64
-#define GAL_PATH   96
-#define HUD_H      16
-#define SWIPE_PX   40u
-#define EXIT_W     48u
-#define EXIT_H     40u
+#define GAL_MAX 64
+#define GAL_PATH 96
+#define HUD_H 16
+#define SWIPE_PX 40u
+#define EXIT_W 48u
+#define EXIT_H 40u
 
 static aster_handle_t s_surf = ASTER_HANDLE_INVALID;
-static uint16_t    *s_scr;        /* surface back buffer (app memory) */
-static uint32_t     W, H, PITCH;
+static uint16_t *s_scr; /* surface back buffer (app memory) */
+static uint32_t W, H, PITCH;
 
-static char     s_names[GAL_MAX][GAL_PATH];
-static int      s_cnt;
-static int      s_idx;
-static int      s_dirty;      /* request a render on the next frame tick */
-static int32_t  s_down_x, s_down_y;
-static int      s_down_valid;
+static char s_names[GAL_MAX][GAL_PATH];
+static int s_cnt;
+static int s_idx;
+static int s_dirty; /* request a render on the next frame tick */
+static int32_t s_down_x, s_down_y;
+static int s_down_valid;
 
 /* ---------------- dir scan ---------------- */
 
@@ -68,8 +68,7 @@ static int ext_is_image(const char *name)
 	if (i > 4) {
 		return 0; /* extension longer than 4: no match possible */
 	}
-	return !strcmp(e, "bmp") || !strcmp(e, "png") ||
-	       !strcmp(e, "jpg") || !strcmp(e, "jpeg");
+	return !strcmp(e, "bmp") || !strcmp(e, "png") || !strcmp(e, "jpg") || !strcmp(e, "jpeg");
 }
 
 static int scan_dir(const char *dir)
@@ -113,10 +112,14 @@ static void scan_all(void)
 static const char *fmt_name(aster_img_info_t *i)
 {
 	switch (i->fmt) {
-	case ASTER_IMG_FMT_BMP: return "BMP";
-	case ASTER_IMG_FMT_JPG: return "JPG";
-	case ASTER_IMG_FMT_PNG: return "PNG";
-	default: return "?";
+	case ASTER_IMG_FMT_BMP:
+		return "BMP";
+	case ASTER_IMG_FMT_JPG:
+		return "JPG";
+	case ASTER_IMG_FMT_PNG:
+		return "PNG";
+	default:
+		return "?";
 	}
 }
 
@@ -140,10 +143,8 @@ static void draw_exit_x(aster_gfx_t *g)
 
 	aster_gfx_fill_rect(g, x, 0, EXIT_W, EXIT_H, ASTER_RGB565(8, 12, 24));
 	aster_gfx_frame_rect(g, x, 0, EXIT_W, EXIT_H, ASTER_RGB565(90, 100, 120));
-	aster_gfx_line(g, (int32_t)x + 18, 12, (int32_t)x + 30, 26,
-		     ASTER_RGB565(235, 238, 245));
-	aster_gfx_line(g, (int32_t)x + 30, 12, (int32_t)x + 18, 26,
-		     ASTER_RGB565(235, 238, 245));
+	aster_gfx_line(g, (int32_t)x + 18, 12, (int32_t)x + 30, 26, ASTER_RGB565(235, 238, 245));
+	aster_gfx_line(g, (int32_t)x + 30, 12, (int32_t)x + 18, 26, ASTER_RGB565(235, 238, 245));
 }
 
 static const char *base_of(const char *p)
@@ -170,12 +171,12 @@ static void paint_image(aster_gfx_t *g, uint32_t iw, uint32_t ih)
 
 	for (uint32_t i = ih; i-- > 0;) {
 		memmove(&s_scr[(size_t)(y + i) * stride + x], &s_scr[(size_t)i * iw],
-			(size_t)iw * 2u);
+		        (size_t)iw * 2u);
 	}
-	aster_gfx_fill_rect(g, 0, 0, W, y, ASTER_BLACK);                  /* above */
+	aster_gfx_fill_rect(g, 0, 0, W, y, ASTER_BLACK);                         /* above */
 	aster_gfx_fill_rect(g, 0, y + ih, W, H - HUD_H - (y + ih), ASTER_BLACK); /* below */
-	aster_gfx_fill_rect(g, 0, y, x, ih, ASTER_BLACK);                 /* left */
-	aster_gfx_fill_rect(g, x + iw, y, W - (x + iw), ih, ASTER_BLACK); /* right */
+	aster_gfx_fill_rect(g, 0, y, x, ih, ASTER_BLACK);                        /* left */
+	aster_gfx_fill_rect(g, x + iw, y, W - (x + iw), ih, ASTER_BLACK);        /* right */
 }
 
 /* Paint one coherent frame — backdrop, image (when `decode`), HUD line, exit
@@ -214,34 +215,32 @@ static void show_current(int decode)
 		a.dst_span = W * H * 2u;
 		a.cap_w = W;
 		a.cap_h = H - HUD_H;
-		rc = aster_img_render(s_names[s_idx], (uint32_t)strlen(s_names[s_idx]),
-				    &a, sizeof(a));
+		rc = aster_img_render(s_names[s_idx], (uint32_t)strlen(s_names[s_idx]), &a,
+		                      sizeof(a));
 
 		if (rc == ASTER_OK && a.out_w && a.out_h) {
 			aster_img_info_t i;
 			const char *tag = "?";
 
 			paint_image(&g, a.out_w, a.out_h);
-			if (aster_img_probe(s_names[s_idx],
-					  (uint32_t)strlen(s_names[s_idx]), &i,
-					  sizeof(i)) == ASTER_OK) {
+			if (aster_img_probe(s_names[s_idx], (uint32_t)strlen(s_names[s_idx]), &i,
+			                    sizeof(i)) == ASTER_OK) {
 				tag = fmt_name(&i);
 			}
-			aster_snprintf(line, sizeof(line), "%d/%d %s %s %ux%u",
-				     s_idx + 1, s_cnt, tag, base_of(s_names[s_idx]),
-				     (unsigned)a.out_w, (unsigned)a.out_h);
+			aster_snprintf(line, sizeof(line), "%d/%d %s %s %ux%u", s_idx + 1, s_cnt,
+			               tag, base_of(s_names[s_idx]), (unsigned)a.out_w,
+			               (unsigned)a.out_h);
 		} else {
 			aster_img_info_t i;
 			const char *why = "decode failed";
 
-			if (aster_img_probe(s_names[s_idx],
-					  (uint32_t)strlen(s_names[s_idx]), &i,
-					  sizeof(i)) == ASTER_OK && i.why[0]) {
+			if (aster_img_probe(s_names[s_idx], (uint32_t)strlen(s_names[s_idx]), &i,
+			                    sizeof(i)) == ASTER_OK &&
+			    i.why[0]) {
 				why = i.why;
 			}
-			aster_snprintf(line, sizeof(line), "%d/%d %s (%d) %s",
-				     s_idx + 1, s_cnt, base_of(s_names[s_idx]),
-				     (int)rc, why);
+			aster_snprintf(line, sizeof(line), "%d/%d %s (%d) %s", s_idx + 1, s_cnt,
+			               base_of(s_names[s_idx]), (int)rc, why);
 		}
 	}
 	draw_hud(&g, line);
@@ -253,10 +252,8 @@ static void show_current(int decode)
 
 ASTER_APP_EXPORT int aster_app_init(void)
 {
-	aster_surface_desc_t d = {
-		.size = sizeof(d), .version = 1, .format = ASTER_PIXEL_RGB565
-	};
-	aster_surface_buffer_t b = { .size = sizeof(b), .version = 1 };
+	aster_surface_desc_t d = {.size = sizeof(d), .version = 1, .format = ASTER_PIXEL_RGB565};
+	aster_surface_buffer_t b = {.size = sizeof(b), .version = 1};
 	int32_t err = aster_surface_create(&d, sizeof(d), &s_surf);
 	if (err != ASTER_OK) {
 		return err;
@@ -275,7 +272,7 @@ ASTER_APP_EXPORT int aster_app_init(void)
 	 * every touch into an exit-box hit). */
 	if (W < EXIT_W || H <= HUD_H) {
 		aster_logf(ASTER_LOG_ERROR, "gallery: %ux%u panel too small for chrome",
-			 (unsigned)W, (unsigned)H);
+		           (unsigned)W, (unsigned)H);
 		return ASTER_ENOTSUP;
 	}
 	aster_app_set_framerate(5); /* viewer: ticks only drive deferred renders */
@@ -329,13 +326,13 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *ev)
 	/* A pending render (s_dirty) means the previous flip is still decoding;
 	 * re-paging here is harmless -- show_current() runs on the frame tick. */
 	if (dx >= (int32_t)SWIPE_PX) {
-		s_idx = (s_idx + s_cnt - 1) % s_cnt;   /* right swipe = prev */
+		s_idx = (s_idx + s_cnt - 1) % s_cnt; /* right swipe = prev */
 		s_dirty = 1;
 	} else if (dx <= -(int32_t)SWIPE_PX) {
-		s_idx = (s_idx + 1) % s_cnt;           /* left swipe = next */
+		s_idx = (s_idx + 1) % s_cnt; /* left swipe = next */
 		s_dirty = 1;
 	} else if (dx * dx + dy * dy < 400) {
-		s_idx = (s_idx + 1) % s_cnt;           /* tap = next */
+		s_idx = (s_idx + 1) % s_cnt; /* tap = next */
 		s_dirty = 1;
 	}
 }

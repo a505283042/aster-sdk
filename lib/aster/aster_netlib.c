@@ -3,22 +3,27 @@
  * six aster_net_* imports cross into the firmware.
  */
 #include <aster/aster.h>
+
 static void net_zero(void *p, uint32_t value, uint32_t n)
 {
 	uint8_t *b = p;
-	for (uint32_t i = 0; i < n; ++i) b[i] = (uint8_t)value;
+	for (uint32_t i = 0; i < n; ++i)
+		b[i] = (uint8_t)value;
 }
+
 static void net_copy(void *d, const void *s, uint32_t n)
 {
 	uint8_t *dd = d;
 	const uint8_t *ss = s;
-	for (uint32_t i = 0; i < n; ++i) dd[i] = ss[i];
+	for (uint32_t i = 0; i < n; ++i)
+		dd[i] = ss[i];
 }
 
 static aster_string_t net_ref(const void *p, uint32_t n)
 {
 	aster_string_t s = {0, 0};
-	if (n) s.offset = (uint32_t)(uintptr_t)p;
+	if (n)
+		s.offset = (uint32_t)(uintptr_t)p;
 	s.length = n;
 	return s;
 }
@@ -28,8 +33,8 @@ int32_t aster_network_get_info(aster_network_info_t *info, uint32_t size)
 	return aster_net_info((aster_net_info_t *)info, size);
 }
 
-int32_t aster_network_open(uint32_t kind, const char *host, uint32_t host_len,
-	uint32_t port, uint32_t timeout_ms)
+int32_t aster_network_open(uint32_t kind, const char *host, uint32_t host_len, uint32_t port,
+                           uint32_t timeout_ms)
 {
 	aster_net_open_hdr_t req;
 	net_zero(&req, 0, sizeof(req));
@@ -42,8 +47,8 @@ int32_t aster_network_open(uint32_t kind, const char *host, uint32_t host_len,
 	return aster_net_open(&req, sizeof(req));
 }
 
-int32_t aster_network_send(uint32_t handle, const void *data, uint32_t length,
-	const char *host, uint32_t host_len, uint32_t port)
+int32_t aster_network_send(uint32_t handle, const void *data, uint32_t length, const char *host,
+                           uint32_t host_len, uint32_t port)
 {
 	aster_net_io_t io;
 	net_zero(&io, 0, sizeof(io));
@@ -56,12 +61,13 @@ int32_t aster_network_send(uint32_t handle, const void *data, uint32_t length,
 }
 
 int32_t aster_network_recv(uint32_t handle, void *data, uint32_t capacity,
-	aster_network_packet_t *packet, uint32_t size)
+                           aster_network_packet_t *packet, uint32_t size)
 {
 	aster_net_io_t io;
 	aster_network_packet_t out;
 	int32_t rc;
-	if (!packet || size < sizeof(*packet)) return ASTER_EINVAL;
+	if (!packet || size < sizeof(*packet))
+		return ASTER_EINVAL;
 	net_zero(&io, 0, sizeof(io));
 	io.size = sizeof(io);
 	io.version = ASTER_NET_ABI_VERSION;
@@ -84,9 +90,11 @@ int32_t aster_network_status(uint32_t handle, aster_network_status_t *status, ui
 	aster_net_tcp_status_t *t = (aster_net_tcp_status_t *)(raw + sizeof(*h));
 	aster_network_status_t out;
 	int32_t rc;
-	if (!status || size < sizeof(*status)) return ASTER_EINVAL;
+	if (!status || size < sizeof(*status))
+		return ASTER_EINVAL;
 	rc = aster_net_status(handle, h, sizeof(raw));
-	if (rc) return rc;
+	if (rc)
+		return rc;
 	net_zero(&out, 0, sizeof(out));
 	out.size = sizeof(out);
 	out.version = 1;
@@ -104,14 +112,25 @@ int32_t aster_network_status(uint32_t handle, aster_network_status_t *status, ui
 	return ASTER_OK;
 }
 
-int32_t aster_network_cancel(uint32_t handle) { return aster_net_cancel(handle); }
-int32_t aster_network_close(uint32_t handle) { return aster_net_close(handle); }
+int32_t aster_network_cancel(uint32_t handle)
+{
+	return aster_net_cancel(handle);
+}
+
+int32_t aster_network_close(uint32_t handle)
+{
+	return aster_net_close(handle);
+}
 
 int32_t aster_http_request(uint32_t method, const char *url, uint32_t url_length,
-	const char *headers, uint32_t headers_length, const void *body,
-	uint32_t body_length, uint32_t timeout_ms, uint32_t body_limit)
+                           const char *headers, uint32_t headers_length, const void *body,
+                           uint32_t body_length, uint32_t timeout_ms, uint32_t body_limit)
 {
-	struct { aster_net_open_hdr_t h; aster_net_http_open_t t; } req;
+	struct {
+		aster_net_open_hdr_t h;
+		aster_net_http_open_t t;
+	} req;
+
 	net_zero(&req, 0, sizeof(req));
 	req.h.size = sizeof(req);
 	req.h.version = ASTER_NET_ABI_VERSION;
@@ -132,9 +151,11 @@ int32_t aster_http_status(uint32_t handle, aster_http_status_t *status, uint32_t
 	aster_net_http_status_t *t = (aster_net_http_status_t *)(raw + sizeof(*h));
 	aster_http_status_t out;
 	int32_t rc;
-	if (!status || size < sizeof(*status)) return ASTER_EINVAL;
+	if (!status || size < sizeof(*status))
+		return ASTER_EINVAL;
 	rc = aster_net_status(handle, h, sizeof(raw));
-	if (rc) return rc;
+	if (rc)
+		return rc;
 	net_zero(&out, 0, sizeof(out));
 	out.size = sizeof(out);
 	out.version = 1;
@@ -161,8 +182,8 @@ int32_t aster_http_read(uint32_t handle, void *data, uint32_t capacity)
 	return aster_net_io(handle, ASTER_NET_OP_RECV, &io, sizeof(io));
 }
 
-int32_t aster_http_header(uint32_t handle, const char *name, uint32_t name_length,
-	uint32_t index, char *output, uint32_t capacity, uint32_t *required)
+int32_t aster_http_header(uint32_t handle, const char *name, uint32_t name_length, uint32_t index,
+                          char *output, uint32_t capacity, uint32_t *required)
 {
 	aster_net_io_t io;
 	int32_t rc;
@@ -173,17 +194,30 @@ int32_t aster_http_header(uint32_t handle, const char *name, uint32_t name_lengt
 	io.data = net_ref(output, capacity);
 	io.aux = index;
 	rc = aster_net_io(handle, ASTER_NET_OP_HEADER, &io, sizeof(io));
-	if (required && (rc >= 0 || rc == ASTER_EMSGSIZE)) *required = io.required;
+	if (required && (rc >= 0 || rc == ASTER_EMSGSIZE))
+		*required = io.required;
 	return rc;
 }
 
-int32_t aster_http_cancel(uint32_t handle) { return aster_net_cancel(handle); }
-int32_t aster_http_close(uint32_t handle) { return aster_net_close(handle); }
+int32_t aster_http_cancel(uint32_t handle)
+{
+	return aster_net_cancel(handle);
+}
+
+int32_t aster_http_close(uint32_t handle)
+{
+	return aster_net_close(handle);
+}
 
 int32_t aster_mqtt_connect(const aster_mqtt_options_t *options, uint32_t size)
 {
-	struct { aster_net_open_hdr_t h; aster_net_mqtt_open_t t; } req;
-	if (!options || size < sizeof(*options) || options->size != sizeof(*options) || options->version != 1)
+	struct {
+		aster_net_open_hdr_t h;
+		aster_net_mqtt_open_t t;
+	} req;
+
+	if (!options || size < sizeof(*options) || options->size != sizeof(*options) ||
+	    options->version != 1)
 		return ASTER_EINVAL;
 	net_zero(&req, 0, sizeof(req));
 	req.h.size = sizeof(req);
@@ -210,9 +244,11 @@ int32_t aster_mqtt_status(uint32_t handle, aster_mqtt_status_t *status, uint32_t
 	aster_net_mqtt_status_t *t = (aster_net_mqtt_status_t *)(raw + sizeof(*h));
 	aster_mqtt_status_t out;
 	int32_t rc;
-	if (!status || size < sizeof(*status)) return ASTER_EINVAL;
+	if (!status || size < sizeof(*status))
+		return ASTER_EINVAL;
 	rc = aster_net_status(handle, h, sizeof(raw));
-	if (rc) return rc;
+	if (rc)
+		return rc;
 	net_zero(&out, 0, sizeof(out));
 	out.size = sizeof(out);
 	out.version = 1;
@@ -234,7 +270,7 @@ int32_t aster_mqtt_status(uint32_t handle, aster_mqtt_status_t *status, uint32_t
 }
 
 int32_t aster_mqtt_publish(uint32_t handle, const char *topic, uint32_t topic_length,
-	const void *data, uint32_t length, uint32_t qos, uint32_t retain)
+                           const void *data, uint32_t length, uint32_t qos, uint32_t retain)
 {
 	aster_net_io_t io;
 	net_zero(&io, 0, sizeof(io));
@@ -271,13 +307,15 @@ int32_t aster_mqtt_operation(uint32_t handle, uint32_t sequence, int32_t *error)
 {
 	aster_net_io_t io;
 	int32_t rc;
-	if (!error) return ASTER_EINVAL;
+	if (!error)
+		return ASTER_EINVAL;
 	net_zero(&io, 0, sizeof(io));
 	io.size = sizeof(io);
 	io.version = ASTER_NET_ABI_VERSION;
 	io.aux = sequence;
 	rc = aster_net_io(handle, ASTER_NET_OP_OPERATION, &io, sizeof(io));
-	if (!rc) *error = (int32_t)io.required;
+	if (!rc)
+		*error = (int32_t)io.required;
 	return rc;
 }
 
@@ -285,26 +323,35 @@ int32_t aster_mqtt_recv(uint32_t handle, aster_mqtt_message_t *message, uint32_t
 {
 	aster_net_io_t io;
 	int32_t rc;
-	if (!message || size < sizeof(*message)) return ASTER_EINVAL;
+	if (!message || size < sizeof(*message))
+		return ASTER_EINVAL;
 	net_zero(&io, 0, sizeof(io));
 	io.size = sizeof(io);
 	io.version = ASTER_NET_ABI_VERSION;
 	io.name = net_ref(message->topic, ASTER_MQTT_TOPIC_LIMIT);
 	io.data = net_ref(message->data, ASTER_MQTT_PAYLOAD_LIMIT);
 	rc = aster_net_io(handle, ASTER_NET_OP_RECV, &io, sizeof(io));
-	if (rc) return rc;
+	if (rc)
+		return rc;
 	message->size = sizeof(*message);
 	message->version = 1;
 	message->length = io.required;
 	message->topic_length = io.port;
 	message->qos = io.flags & 3u;
 	message->flags = ((io.flags & 4u) ? ASTER_MQTT_MESSAGE_RETAIN : 0) |
-		((io.flags & 8u) ? ASTER_MQTT_MESSAGE_DUP : 0);
+	                 ((io.flags & 8u) ? ASTER_MQTT_MESSAGE_DUP : 0);
 	return ASTER_OK;
 }
 
-int32_t aster_mqtt_cancel(uint32_t handle) { return aster_net_cancel(handle); }
-int32_t aster_mqtt_close(uint32_t handle) { return aster_net_close(handle); }
+int32_t aster_mqtt_cancel(uint32_t handle)
+{
+	return aster_net_cancel(handle);
+}
+
+int32_t aster_mqtt_close(uint32_t handle)
+{
+	return aster_net_close(handle);
+}
 
 int32_t aster_ws_connect(const char *url, uint32_t url_length, uint32_t timeout_ms)
 {
@@ -325,9 +372,11 @@ int32_t aster_ws_status(uint32_t handle, aster_ws_status_t *status, uint32_t siz
 	aster_net_ws_status_t *t = (aster_net_ws_status_t *)(raw + sizeof(*h));
 	aster_ws_status_t out;
 	int32_t rc;
-	if (!status || size < sizeof(*status)) return ASTER_EINVAL;
+	if (!status || size < sizeof(*status))
+		return ASTER_EINVAL;
 	rc = aster_net_status(handle, h, sizeof(raw));
-	if (rc) return rc;
+	if (rc)
+		return rc;
 	net_zero(&out, 0, sizeof(out));
 	out.size = sizeof(out);
 	out.version = 1;
@@ -358,13 +407,15 @@ int32_t aster_ws_recv(uint32_t handle, aster_ws_message_t *message, uint32_t siz
 {
 	aster_net_io_t io;
 	int32_t rc;
-	if (!message || size < sizeof(*message)) return ASTER_EINVAL;
+	if (!message || size < sizeof(*message))
+		return ASTER_EINVAL;
 	net_zero(&io, 0, sizeof(io));
 	io.size = sizeof(io);
 	io.version = ASTER_NET_ABI_VERSION;
 	io.data = net_ref(message->data, ASTER_WS_MESSAGE_LIMIT);
 	rc = aster_net_io(handle, ASTER_NET_OP_RECV, &io, sizeof(io));
-	if (rc) return rc;
+	if (rc)
+		return rc;
 	message->size = sizeof(*message);
 	message->version = 1;
 	message->opcode = (io.flags >> 8) & 0xffu;
@@ -372,5 +423,12 @@ int32_t aster_ws_recv(uint32_t handle, aster_ws_message_t *message, uint32_t siz
 	return ASTER_OK;
 }
 
-int32_t aster_ws_cancel(uint32_t handle) { return aster_net_cancel(handle); }
-int32_t aster_ws_close(uint32_t handle) { return aster_net_close(handle); }
+int32_t aster_ws_cancel(uint32_t handle)
+{
+	return aster_net_cancel(handle);
+}
+
+int32_t aster_ws_close(uint32_t handle)
+{
+	return aster_net_close(handle);
+}

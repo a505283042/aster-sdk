@@ -11,19 +11,19 @@
 
 static int g_pass, g_fail;
 
-#define CHECK(cond, name, ...)                                             \
-	do {                                                               \
-		if (cond) {                                                \
-			g_pass++;                                          \
-			aster_logf(ASTER_LOG_INFO, "PASS " name, ##__VA_ARGS__);\
-		} else {                                                   \
-			g_fail++;                                          \
-			aster_logf(ASTER_LOG_ERROR, "FAIL " name, ##__VA_ARGS__);\
-		}                                                          \
+#define CHECK(cond, name, ...) \
+	do { \
+		if (cond) { \
+			g_pass++; \
+			aster_logf(ASTER_LOG_INFO, "PASS " name, ##__VA_ARGS__); \
+		} else { \
+			g_fail++; \
+			aster_logf(ASTER_LOG_ERROR, "FAIL " name, ##__VA_ARGS__); \
+		} \
 	} while (0)
 
-#define FNAME  "/data/apitest.bin"
-#define FLEN   3000 /* spans several 1 KB DMA bounce chunks */
+#define FNAME "/data/apitest.bin"
+#define FLEN 3000 /* spans several 1 KB DMA bounce chunks */
 
 static uint8_t fbuf[FLEN];
 static uint8_t rbuf[FLEN];
@@ -38,7 +38,7 @@ static void fs_tests(void)
 	aster_handle_t h = ASTER_HANDLE_INVALID;
 	/* RDWR: the seek tests read back through the same handle */
 	int32_t e = aster_fs_open(FNAME, sizeof(FNAME) - 1,
-				ASTER_FS_O_RDWR | ASTER_FS_O_CREAT | ASTER_FS_O_TRUNC, &h);
+	                          ASTER_FS_O_RDWR | ASTER_FS_O_CREAT | ASTER_FS_O_TRUNC, &h);
 	CHECK(e == ASTER_OK, "fs_open create %d", e);
 	if (e != ASTER_OK) {
 		return;
@@ -59,8 +59,7 @@ static void fs_tests(void)
 	/* SEEK_CUR backwards from current (1004) -> 996 */
 	e = aster_fs_seek(h, -8, ASTER_FS_SEEK_CUR);
 	n = aster_fs_read(h, rbuf, 8);
-	CHECK(e == ASTER_OK && n == 8 && rbuf[0] == pat(996),
-	      "fs_seek CUR-back %d/%d", e, n);
+	CHECK(e == ASTER_OK && n == 8 && rbuf[0] == pat(996), "fs_seek CUR-back %d/%d", e, n);
 
 	/* SEEK_END negative */
 	e = aster_fs_seek(h, -4, ASTER_FS_SEEK_END);
@@ -75,10 +74,9 @@ static void fs_tests(void)
 	aster_fs_close(h);
 
 	/* stat reflects size */
-	aster_stat_t st = { .size = sizeof(st), .version = 1 };
+	aster_stat_t st = {.size = sizeof(st), .version = 1};
 	e = aster_fs_stat(FNAME, sizeof(FNAME) - 1, &st, sizeof(st));
-	CHECK(e == ASTER_OK && st.filesize == FLEN, "fs_stat size %d/%u", e,
-	      (uint32_t)st.filesize);
+	CHECK(e == ASTER_OK && st.filesize == FLEN, "fs_stat size %d/%u", e, (uint32_t)st.filesize);
 
 	/* reopen RDONLY, verify content start */
 	e = aster_fs_open(FNAME, sizeof(FNAME) - 1, ASTER_FS_O_RDONLY, &h);
@@ -112,11 +110,11 @@ static void fs_tests(void)
 
 static void kv_tests(void)
 {
-	static const uint8_t val[4] = { 0xDE, 0xAD, 0xBE, 0xEF };
+	static const uint8_t val[4] = {0xDE, 0xAD, 0xBE, 0xEF};
 	int32_t e = aster_kv_set("tk", 2, val, 4);
 	CHECK(e == ASTER_OK, "kv_set %d", e);
 
-	uint8_t out[8] = { 0 };
+	uint8_t out[8] = {0};
 	e = aster_kv_get("tk", 2, out, sizeof(out));
 	CHECK(e == 4 && out[0] == 0xDE && out[3] == 0xEF, "kv_get roundtrip %d", e);
 
@@ -147,17 +145,16 @@ static void display_input_tests(void)
 	int32_t cnt = aster_display_count();
 	CHECK(cnt >= 1, "display_count %d", cnt);
 
-	aster_display_info_t di = { 0 };
+	aster_display_info_t di = {0};
 	int32_t e = aster_display_get_info(0, &di, sizeof(di));
 	/* Resolution-agnostic: the logical geometry follows the board's
 	 * rotation (reference port scans 320x240, rot=90 -> logical 240x320).
 	 * Assert only that info is sane + orientation matches the aspect. */
-	CHECK(e == ASTER_OK && di.width > 0 && di.height > 0,
-	      "display_get_info 0 -> %ux%u (%d)", di.width, di.height, e);
+	CHECK(e == ASTER_OK && di.width > 0 && di.height > 0, "display_get_info 0 -> %ux%u (%d)",
+	      di.width, di.height, e);
 	int portrait = di.height > di.width;
 	CHECK((di.orientation == ASTER_ORIENT_PORTRAIT) == portrait,
-	      "orientation %u matches %ux%u aspect", di.orientation,
-	      di.width, di.height);
+	      "orientation %u matches %ux%u aspect", di.orientation, di.width, di.height);
 
 	/* [3.2] app_width/app_height are the space surfaces are created in and
 	 * touch is reported in. Two properties are load-bearing, not cosmetic:
@@ -172,14 +169,13 @@ static void display_input_tests(void)
 	 *     DIV) rather than a lookup table, and what makes the touch inverse
 	 *     unambiguous. It is asserted at build time in the port too, but a
 	 *     host-side check here is what catches a port that forgot to. */
-	CHECK(di.app_width > 0 && di.app_height > 0 &&
-	      di.app_width <= di.width && di.app_height <= di.height,
-	      "app space %ux%u <= glass %ux%u", di.app_width, di.app_height,
-	      di.width, di.height);
+	CHECK(di.app_width > 0 && di.app_height > 0 && di.app_width <= di.width &&
+	              di.app_height <= di.height,
+	      "app space %ux%u <= glass %ux%u", di.app_width, di.app_height, di.width, di.height);
 	CHECK(di.width % di.app_width == 0 && di.height % di.app_height == 0 &&
-	      di.width / di.app_width == di.height / di.app_height,
-	      "app space %ux%u divides glass %ux%u evenly on both axes",
-	      di.app_width, di.app_height, di.width, di.height);
+	              di.width / di.app_width == di.height / di.app_height,
+	      "app space %ux%u divides glass %ux%u evenly on both axes", di.app_width,
+	      di.app_height, di.width, di.height);
 
 	/* Truncated request: bytes past the caller's size must be left alone.
 	 * Offsets come from offsetof() rather than a literal so that a field
@@ -187,16 +183,15 @@ static void display_input_tests(void)
 	 * a literal would still compile, and would stop testing anything. */
 	aster_display_info_t part;
 	memset(&part, 0xA5, sizeof(part));
-	e = aster_display_get_info(0, &part,
-				 (uint32_t)offsetof(aster_display_info_t, app_width));
+	e = aster_display_get_info(0, &part, (uint32_t)offsetof(aster_display_info_t, app_width));
 	CHECK(e == ASTER_OK && part.width == di.width && part.height == di.height &&
-	      part.app_width == 0xA5A5A5A5u && part.app_height == 0xA5A5A5A5u,
+	              part.app_width == 0xA5A5A5A5u && part.app_height == 0xA5A5A5A5u,
 	      "prefix fill stops before app_width (0x%x)", part.app_width);
 
 	e = aster_display_get_info(99, &di, sizeof(di));
 	CHECK(e < 0, "display_get_info bad index fails %d", e);
 
-	aster_input_info_t ii = { 0 };
+	aster_input_info_t ii = {0};
 	e = aster_input_get_info(&ii, sizeof(ii));
 	CHECK(e == ASTER_OK && (ii.kinds & ASTER_INPUT_TOUCH),
 	      "input_get_info kinds=0x%x max_pts=%u (%d)", ii.kinds, ii.max_points, e);
@@ -208,11 +203,10 @@ static void display_input_tests(void)
 
 	/* keyboard / buttons (ABI 1.1): capability bit + state poll must be
 	 * consistent. kinds must report KEYS iff feature KEYBOARD present. */
-	aster_input_info_t ki = { 0 };
+	aster_input_info_t ki = {0};
 	e = aster_input_get_info(&ki, sizeof(ki));
 	int has_kbd = aster_system_has_feature(ASTER_FEATURE_KEYBOARD);
-	CHECK(e == ASTER_OK &&
-	      (((ki.kinds & ASTER_INPUT_KEYS) != 0) == (has_kbd != 0)),
+	CHECK(e == ASTER_OK && (((ki.kinds & ASTER_INPUT_KEYS) != 0) == (has_kbd != 0)),
 	      "keys kind==keyboard feature kinds=0x%x kbd=%d (%d)", ki.kinds, has_kbd, e);
 	uint32_t codes[8];
 	e = aster_input_keys_state((uint32_t)(uintptr_t)codes, 8);
@@ -227,11 +221,10 @@ static void appmgr_tests(void)
 	int32_t n = aster_appmgr_count();
 	CHECK(n >= 1, "appmgr_count %d (gate open)", n);
 
-	aster_app_info_t ai = { 0 };
+	aster_app_info_t ai = {0};
 	int32_t e = aster_appmgr_list(0, &ai, sizeof(ai));
 	CHECK(e == ASTER_OK && ai.id[0] != 0 && ai.name[0] != 0,
-	      "appmgr_list[0] '%s' name='%s' state=%u (%d)",
-	      ai.id, ai.name, ai.state, e);
+	      "appmgr_list[0] '%s' name='%s' state=%u (%d)", ai.id, ai.name, ai.state, e);
 
 	e = aster_appmgr_list(9999, &ai, sizeof(ai));
 	CHECK(e < 0, "appmgr_list bad index fails %d", e);
@@ -262,7 +255,7 @@ static void sensor_tests(void)
 	int32_t has_a = aster_system_has_feature(ASTER_FEATURE_ACCELEROMETER);
 	int32_t has_g = aster_system_has_feature(ASTER_FEATURE_GYROSCOPE);
 
-	float a[3] = { 0 }, g[3] = { 0 };
+	float a[3] = {0}, g[3] = {0};
 	int32_t e = aster_accel_read(a, sizeof(a));
 	if (has_a) {
 		CHECK(e == ASTER_OK, "accel_read %d", e);
@@ -293,9 +286,8 @@ static void sensor_tests(void)
 		CHECK(e == ASTER_OK, "accel_read cached %d", e);
 		/* milli-units again, for the same reason as the |a|^2 line. */
 		aster_logf(ASTER_LOG_INFO, "apitest: a=(%d,%d,%d) g=(%d,%d,%d) milli",
-			 (int)(a[0] * 1000.0f), (int)(a[1] * 1000.0f),
-			 (int)(a[2] * 1000.0f), (int)(g[0] * 1000.0f),
-			 (int)(g[1] * 1000.0f), (int)(g[2] * 1000.0f));
+		           (int)(a[0] * 1000.0f), (int)(a[1] * 1000.0f), (int)(a[2] * 1000.0f),
+		           (int)(g[0] * 1000.0f), (int)(g[1] * 1000.0f), (int)(g[2] * 1000.0f));
 	}
 }
 
@@ -338,7 +330,7 @@ static void camera_tests(void)
 		}
 		CHECK(varied, "frame has sensor variation");
 		aster_logf(ASTER_LOG_INFO, "apitest: cam %ux%u sampled-lum=%u", w, h,
-			 (unsigned)(lum / ((w * h) / 4001 + 1)));
+		           (unsigned)(lum / ((w * h) / 4001 + 1)));
 	}
 }
 
@@ -394,8 +386,8 @@ static void audio_tests(void)
 		e = aster_audio_get_state(&st, 4);
 		CHECK(e == ASTER_EINVAL, "get_state small -> EINVAL %d", e);
 		e = aster_audio_get_state(&st, sizeof(st));
-		CHECK(e == ASTER_OK && st.state == ASTER_AUDIO_IDLE,
-		      "idle state %u (e=%d)", st.state, e);
+		CHECK(e == ASTER_OK && st.state == ASTER_AUDIO_IDLE, "idle state %u (e=%d)",
+		      st.state, e);
 
 		/* [3.2] The native format is asked for, not assumed. Two things
 		 * worth pinning: a size below the size+version floor is refused
@@ -411,10 +403,10 @@ static void audio_tests(void)
 		      "get_info prefix %u/%u (e=%d)", ai.size, ai.version, e);
 		memset(&ai, 0, sizeof(ai));
 		e = aster_audio_get_info(&ai, sizeof(ai));
-		CHECK(e == ASTER_OK && ai.sample_rate > 0 && ai.channels >= 1 &&
-		      ai.channels <= 8 && ai.bits >= 8 && ai.bits <= 32,
-		      "native fmt %u Hz %u ch %u bit (e=%d)",
-		      ai.sample_rate, ai.channels, ai.bits, e);
+		CHECK(e == ASTER_OK && ai.sample_rate > 0 && ai.channels >= 1 && ai.channels <= 8 &&
+		              ai.bits >= 8 && ai.bits <= 32,
+		      "native fmt %u Hz %u ch %u bit (e=%d)", ai.sample_rate, ai.channels, ai.bits,
+		      e);
 	} else {
 		e = aster_audio_set_volume(40);
 		CHECK(e == ASTER_ENODEV, "no out -> vol ENODEV %d", e);
@@ -434,13 +426,15 @@ static void surface_flush_tests(void)
 	if (!aster_system_has_feature(ASTER_FEATURE_DISPLAY)) {
 		return; /* headless profile: nothing to flush onto */
 	}
-	aster_surface_desc_t d = { .size = sizeof(d), .version = 1,
-				 .width = 0, .height = 0,
-				 .format = ASTER_PIXEL_RGB565, .flags = 0 };
+	aster_surface_desc_t d = {.size = sizeof(d),
+	                          .version = 1,
+	                          .width = 0,
+	                          .height = 0,
+	                          .format = ASTER_PIXEL_RGB565,
+	                          .flags = 0};
 	aster_handle_t s = ASTER_HANDLE_INVALID;
 	int32_t e = aster_surface_create(&d, sizeof(d), &s);
-	CHECK(e == ASTER_OK && s != ASTER_HANDLE_INVALID, "surface_create %d h=0x%x",
-	      e, s);
+	CHECK(e == ASTER_OK && s != ASTER_HANDLE_INVALID, "surface_create %d h=0x%x", e, s);
 	if (e != ASTER_OK) {
 		return;
 	}
@@ -496,9 +490,9 @@ static void surface_present_tests(void)
 	if (!aster_system_has_feature(ASTER_FEATURE_DISPLAY)) {
 		return; /* headless profile: nothing to present onto */
 	}
-	aster_display_info_t di = { 0 };
-	if (aster_display_get_info(0, &di, sizeof(di)) != ASTER_OK ||
-	    di.width == 0 || di.height == 0) {
+	aster_display_info_t di = {0};
+	if (aster_display_get_info(0, &di, sizeof(di)) != ASTER_OK || di.width == 0 ||
+	    di.height == 0) {
 		return;
 	}
 
@@ -508,9 +502,9 @@ static void surface_present_tests(void)
 		uint32_t fmt, w, h, bpp, fill;
 		const char *name;
 	} cases[] = {
-		{ ASTER_PIXEL_BGR565, 0, 0, 2, 0x1f, "BGR565 full screen" },
-		{ ASTER_PIXEL_RGB888, 0, di.height / 2, 3, 0x3f, "RGB888" },
-		{ ASTER_PIXEL_RGBA8888, 0, di.height / 2, 4, 0x7f, "RGBA8888" },
+	        {ASTER_PIXEL_BGR565, 0, 0, 2, 0x1f, "BGR565 full screen"},
+	        {ASTER_PIXEL_RGB888, 0, di.height / 2, 3, 0x3f, "RGB888"},
+	        {ASTER_PIXEL_RGBA8888, 0, di.height / 2, 4, 0x7f, "RGBA8888"},
 	};
 
 	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
@@ -523,12 +517,15 @@ static void surface_present_tests(void)
 		 * resize it rather than quietly keep a test that asserts nothing.
 		 * (This is what caught the first draft of these cases: half-height
 		 * RGB888 and quarter-height RGBA8888 land under 65,536 B.) */
-		CHECK(conv > POOL, "%s %ux%u: scratch %u vs heap %u (must exceed)",
-		      cases[i].name, cw, ch, conv, POOL);
+		CHECK(conv > POOL, "%s %ux%u: scratch %u vs heap %u (must exceed)", cases[i].name,
+		      cw, ch, conv, POOL);
 
-		aster_surface_desc_t d = { .size = sizeof(d), .version = 1,
-					 .width = cases[i].w, .height = cases[i].h,
-					 .format = cases[i].fmt, .flags = 0 };
+		aster_surface_desc_t d = {.size = sizeof(d),
+		                          .version = 1,
+		                          .width = cases[i].w,
+		                          .height = cases[i].h,
+		                          .format = cases[i].fmt,
+		                          .flags = 0};
 		aster_handle_t s = ASTER_HANDLE_INVALID;
 		int32_t e = aster_surface_create(&d, sizeof(d), &s);
 		CHECK(e == ASTER_OK, "%s %ux%u: create %d", cases[i].name, cw, ch, e);
@@ -536,12 +533,12 @@ static void surface_present_tests(void)
 			continue;
 		}
 
-		aster_surface_buffer_t sb = { .size = sizeof(sb), .version = 1 };
+		aster_surface_buffer_t sb = {.size = sizeof(sb), .version = 1};
 		e = aster_surface_acquire(s, &sb, sizeof(sb));
 		CHECK(e == ASTER_OK && sb.ptr && sb.width == cw && sb.height == ch &&
-			      sb.pitch == cw * cases[i].bpp,
-		      "%s: acquire %d %ux%u pitch=%u", cases[i].name, e, sb.width,
-		      sb.height, sb.pitch);
+		              sb.pitch == cw * cases[i].bpp,
+		      "%s: acquire %d %ux%u pitch=%u", cases[i].name, e, sb.width, sb.height,
+		      sb.pitch);
 
 		if (e == ASTER_OK && sb.ptr) {
 			memset(sb.ptr, cases[i].fill, (size_t)sb.pitch * sb.height);
@@ -622,13 +619,12 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *ev)
 			 * run without injection must stay green. */
 			if (g_keys_seen) {
 				CHECK(g_key_down >= 1 && g_key_up >= 1,
-				      "key e2e down=%u up=%u code=%u",
-				      g_key_down, g_key_up, g_key_code);
+				      "key e2e down=%u up=%u code=%u", g_key_down, g_key_up,
+				      g_key_code);
 			}
 			aster_logf(ASTER_LOG_INFO,
-				 "APITEST keys expect=%d seen=%d down=%u up=%u code=%u",
-				 g_expect_keys, g_keys_seen, g_key_down, g_key_up,
-				 g_key_code);
+			           "APITEST keys expect=%d seen=%d down=%u up=%u code=%u",
+			           g_expect_keys, g_keys_seen, g_key_down, g_key_up, g_key_code);
 			aster_logf(ASTER_LOG_INFO, "APITEST done pass=%d fail=%d", g_pass, g_fail);
 			aster_app_exit(g_fail);
 		}

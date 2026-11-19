@@ -9,14 +9,14 @@
 #define MAX_DROPS 12
 #define BACK_STARS 18
 #define FACE_PX ((uint32_t)ASTER_TEXT_FACES[0].px)
-#define BG       ASTER_RGB565(8, 17, 38)
-#define SKY      ASTER_RGB565(31, 51, 83)
-#define WHITE    ASTER_RGB565(239, 246, 255)
-#define MUTED    ASTER_RGB565(113, 145, 181)
-#define GOLD     ASTER_RGB565(255, 207, 74)
+#define BG ASTER_RGB565(8, 17, 38)
+#define SKY ASTER_RGB565(31, 51, 83)
+#define WHITE ASTER_RGB565(239, 246, 255)
+#define MUTED ASTER_RGB565(113, 145, 181)
+#define GOLD ASTER_RGB565(255, 207, 74)
 #define GOLD_LIT ASTER_RGB565(255, 242, 174)
-#define RED      ASTER_RGB565(245, 88, 101)
-#define CYAN     ASTER_RGB565(78, 210, 226)
+#define RED ASTER_RGB565(245, 88, 101)
+#define CYAN ASTER_RGB565(78, 210, 226)
 
 /* Phase 0: waiting, 1: playing, 2: game over. */
 static int phase;
@@ -34,6 +34,7 @@ typedef struct {
     uint8_t speed;
     uint8_t active;
 } drop_t;
+
 static drop_t drops[MAX_DROPS];
 
 static uint32_t next_random(void)
@@ -44,14 +45,17 @@ static uint32_t next_random(void)
 
 static int32_t clamp_x(int32_t x)
 {
-    if (x < 28) return 28;
-    if (x > width - 28) return width - 28;
+    if (x < 28)
+        return 28;
+    if (x > width - 28)
+        return width - 28;
     return x;
 }
 
 static void reset_game(void)
 {
-    for (int i = 0; i < MAX_DROPS; ++i) drops[i].active = 0;
+    for (int i = 0; i < MAX_DROPS; ++i)
+        drops[i].active = 0;
     random_state ^= aster_time_now_ms() | 1u;
     catcher_x = width / 2;
     left_held = right_held = 0;
@@ -64,11 +68,13 @@ static void reset_game(void)
 static void spawn_drop(void)
 {
     for (int i = 0; i < MAX_DROPS; ++i) {
-        if (drops[i].active) continue;
+        if (drops[i].active)
+            continue;
         drops[i].x = 16 + (int32_t)(next_random() % (uint32_t)(width - 32));
         drops[i].y = 33;
         drops[i].kind = (uint8_t)((next_random() % 5u) == 0u);
-        drops[i].speed = (uint8_t)(2 + next_random() % 3u + (uint32_t)(score / 80 < 3 ? score / 80 : 3));
+        drops[i].speed =
+            (uint8_t)(2 + next_random() % 3u + (uint32_t)(score / 80 < 3 ? score / 80 : 3));
         drops[i].active = 1;
         return;
     }
@@ -76,25 +82,31 @@ static void spawn_drop(void)
 
 static void step_game(void)
 {
-    if (phase != 1) return;
+    if (phase != 1)
+        return;
     ++frames;
     if (left_held != right_held) {
         catcher_x = clamp_x(catcher_x + (left_held ? -7 : 7));
     }
     uint32_t cadence = score >= 160 ? 9u : score >= 80 ? 11u : 14u;
-    if (frames % cadence == 0u) spawn_drop();
+    if (frames % cadence == 0u)
+        spawn_drop();
     for (int i = 0; i < MAX_DROPS; ++i) {
         drop_t *d = &drops[i];
-        if (!d->active) continue;
+        if (!d->active)
+            continue;
         d->y += d->speed;
-        if (d->y >= catcher_y - 10 && d->y <= catcher_y + 10 &&
-            d->x >= catcher_x - 29 && d->x <= catcher_x + 29) {
+        if (d->y >= catcher_y - 10 && d->y <= catcher_y + 10 && d->x >= catcher_x - 29 &&
+            d->x <= catcher_x + 29) {
             d->active = 0;
-            if (d->kind) --lives;
-            else score += 10;
+            if (d->kind)
+                --lives;
+            else
+                score += 10;
         } else if (d->y > height + 9) {
             d->active = 0;
-            if (!d->kind) --lives;
+            if (!d->kind)
+                --lives;
         }
         if (lives <= 0) {
             lives = 0;
@@ -108,8 +120,7 @@ static void centered_text(int32_t y, uint16_t color, const char *s)
 {
     int32_t pixels = aster_gfx_text_w(FACE_PX, s, (uint32_t)strlen(s));
     if (pixels >= 0) {
-        aster_ge_text(&ge, (width - pixels) / 2, y, FACE_PX, color,
-                      ASTER_GFX_NOBG, s);
+        aster_ge_text(&ge, (width - pixels) / 2, y, FACE_PX, color, ASTER_GFX_NOBG, s);
     }
 }
 
@@ -132,7 +143,8 @@ static void render(void)
     }
     for (int i = 0; i < MAX_DROPS; ++i) {
         const drop_t *d = &drops[i];
-        if (!d->active) continue;
+        if (!d->active)
+            continue;
         if (d->kind) {
             aster_ge_ellipse(&ge, d->x, d->y, 8, 8, RED, 0);
             aster_ge_ellipse(&ge, d->x - 2, d->y - 2, 2, 2, WHITE, 0);
@@ -148,18 +160,15 @@ static void render(void)
     aster_ge_text(&ge, 7, 22, FACE_PX, WHITE, ASTER_GFX_NOBG, line);
     aster_snprintf(line, (int)sizeof(line), "LIFE %d", lives);
     int32_t tw = aster_gfx_text_w(FACE_PX, line, (uint32_t)strlen(line));
-    if (tw >= 0) aster_ge_text(&ge, width - tw - 7, 22, FACE_PX,
-                               GOLD, ASTER_GFX_NOBG, line);
+    if (tw >= 0)
+        aster_ge_text(&ge, width - tw - 7, 22, FACE_PX, GOLD, ASTER_GFX_NOBG, line);
     if (phase != 1) {
         int32_t panel_y = height / 2 - 40;
-        aster_ge_rect_r(&ge, (width - 210) / 2, panel_y, 210, 78,
-                        ASTER_RGB565(17, 34, 58), 9, 0);
-        aster_ge_rect_r(&ge, (width - 210) / 2, panel_y, 210, 78,
-                        phase == 2 ? RED : CYAN, 9, 1);
+        aster_ge_rect_r(&ge, (width - 210) / 2, panel_y, 210, 78, ASTER_RGB565(17, 34, 58), 9, 0);
+        aster_ge_rect_r(&ge, (width - 210) / 2, panel_y, 210, 78, phase == 2 ? RED : CYAN, 9, 1);
         centered_text(panel_y + 30, phase == 2 ? RED : GOLD,
                       phase == 2 ? "GAME OVER" : "STAR CATCH");
-        centered_text(panel_y + 57, WHITE,
-                      phase == 2 ? "TAP TO RETRY" : "TAP TO START");
+        centered_text(panel_y + 57, WHITE, phase == 2 ? "TAP TO RETRY" : "TAP TO START");
     }
     aster_ge_present(&ge);
 }
@@ -167,14 +176,17 @@ static void render(void)
 ASTER_APP_EXPORT int aster_app_init(void)
 {
     aster_surface_desc_t desc = {
-        .size = sizeof(desc), .version = 1, .format = ASTER_PIXEL_NATIVE,
+        .size = sizeof(desc),
+        .version = 1,
+        .format = ASTER_PIXEL_NATIVE,
         .flags = ASTER_SURFACE_F_PANEL_CANVAS,
     };
-    aster_surface_buffer_t buffer = { .size = sizeof(buffer), .version = 1 };
+    aster_surface_buffer_t buffer = {.size = sizeof(buffer), .version = 1};
     int32_t err;
     aster_app_set_framerate(20);
     err = aster_surface_create(&desc, sizeof(desc), &surface);
-    if (err != ASTER_OK) return err;
+    if (err != ASTER_OK)
+        return err;
     err = aster_surface_acquire(surface, &buffer, sizeof(buffer));
     if (err != ASTER_OK) {
         aster_surface_destroy(surface);
@@ -193,8 +205,8 @@ ASTER_APP_EXPORT int aster_app_init(void)
     lives = 3;
     phase = 0;
     random_state = aster_time_now_ms() ^ 0x51A7C47Cu;
-    aster_ge_init(&ge, surface, buffer.width, buffer.height,
-                  commands, sizeof(commands) / sizeof(commands[0]), text_arena, sizeof(text_arena));
+    aster_ge_init(&ge, surface, buffer.width, buffer.height, commands,
+                  sizeof(commands) / sizeof(commands[0]), text_arena, sizeof(text_arena));
     return ASTER_OK;
 }
 
@@ -219,9 +231,12 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *event)
     } else if (event->type == ASTER_EVENT_KEY) {
         uint32_t key = event->u.key.code;
         int pressed = event->u.key.pressed != 0;
-        if (key == 105u) left_held = pressed;
-        if (key == 106u) right_held = pressed;
-        if (pressed && phase != 1 && (key == 28u || key == 57u)) reset_game();
+        if (key == 105u)
+            left_held = pressed;
+        if (key == 106u)
+            right_held = pressed;
+        if (pressed && phase != 1 && (key == 28u || key == 57u))
+            reset_game();
     } else if (event->type == ASTER_EVENT_FRAME) {
         step_game();
         render();

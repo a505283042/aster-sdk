@@ -1,4 +1,5 @@
 """Stage pinned firmware and simulator binaries; APP builds never use this tool."""
+
 import hashlib
 import json
 import shutil
@@ -14,17 +15,28 @@ def stage(root, out, host, cache, bundles=None):
         return
     family = json.loads(document.read_text())
     abi = json.loads((root / 'contract/lock.json').read_text())['abi']
-    if family.get('schema')==2:
-        if family['abi']!=abi:raise ValueError('Development kit ABI differs from SDK')
+    if family.get('schema') == 2:
+        if family['abi'] != abi:
+            raise ValueError('Development kit ABI differs from SDK')
         for component in family['components'].values():
-            if component['abi']!=abi or len(component['revision'])!=40:raise ValueError('Development kit component identity differs from SDK')
-        shutil.copy2(document,out/'development-kit.json')
-        info=json.loads((out/'release.json').read_text());info['development_kit']={'family':family['family'],'sdk_tag':family['sdk_tag'],'components':family['components']}
-        (out/'release.json').write_text(json.dumps(info,indent=2)+'\n')
+            if component['abi'] != abi or len(component['revision']) != 40:
+                raise ValueError('Development kit component identity differs from SDK')
+        shutil.copy2(document, out / 'development-kit.json')
+        info = json.loads((out / 'release.json').read_text())
+        info['development_kit'] = {
+            'family': family['family'],
+            'sdk_tag': family['sdk_tag'],
+            'components': family['components'],
+        }
+        (out / 'release.json').write_text(json.dumps(info, indent=2) + '\n')
         return
     if family['schema'] != 1 or family['abi'] != abi:
         raise ValueError('Development kit ABI differs from SDK')
-    if family.get('contract_api_sha256') and hashlib.sha256((root / 'contract/api.json').read_bytes()).hexdigest() != family['contract_api_sha256']:
+    if (
+        family.get('contract_api_sha256')
+        and hashlib.sha256((root / 'contract/api.json').read_bytes()).hexdigest()
+        != family['contract_api_sha256']
+    ):
         raise ValueError('Development kit public API differs from SDK')
     for component in family['components'].values():
         if component['abi'] != abi or len(component['revision']) != 40:
@@ -49,11 +61,18 @@ def stage(root, out, host, cache, bundles=None):
         raise ValueError('Development kit checksum mismatch: ' + name)
 
     seen = set()
+
     def validate(name):
         path = PurePosixPath(name)
-        if (not path.parts or path.parts[0] not in ('firmware', 'simulator') or
-                path.is_absolute() or '..' in path.parts or '\\' in name or ':' in name or
-                name in seen):
+        if (
+            not path.parts
+            or path.parts[0] not in ('firmware', 'simulator')
+            or path.is_absolute()
+            or '..' in path.parts
+            or '\\' in name
+            or ':' in name
+            or name in seen
+        ):
             raise ValueError('Unsafe development kit member: ' + name)
         seen.add(name)
 
@@ -75,13 +94,20 @@ def stage(root, out, host, cache, bundles=None):
         raise ValueError('Unsupported development kit format')
     for image in family['components']['firmware']['images'].values():
         path = (out / image['path']).resolve()
-        if not path.is_relative_to(out.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest() != image['sha256']:
+        if (
+            not path.is_relative_to(out.resolve())
+            or hashlib.sha256(path.read_bytes()).hexdigest() != image['sha256']
+        ):
             raise ValueError('Pinned firmware image checksum mismatch')
     entry = 'aster-sim.exe' if host == 'windows-x64' else 'aster-sim'
     if not (out / 'simulator' / entry).is_file():
         raise ValueError('Pinned simulator entry point missing')
     shutil.copy2(document, out / 'development-kit.json')
     info = json.loads((out / 'release.json').read_text())
-    info['development_kit'] = {'family': family['family'], 'sdk_tag': family['sdk_tag'],
-                               'components': family['components'], 'payload_sha256': record['sha256']}
+    info['development_kit'] = {
+        'family': family['family'],
+        'sdk_tag': family['sdk_tag'],
+        'components': family['components'],
+        'payload_sha256': record['sha256'],
+    }
     (out / 'release.json').write_text(json.dumps(info, indent=2) + '\n')

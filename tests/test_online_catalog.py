@@ -1,9 +1,13 @@
 """Bounded catalogue parsing across every network split, escapes and URL bytes."""
+
 import pathlib, subprocess, tempfile, unittest
-ROOT=pathlib.Path(__file__).resolve().parents[1]
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
 class Catalogue(unittest.TestCase):
- def test_streaming_json(self):
-  code=r'''
+    def test_streaming_json(self):
+        code = r'''
 #include <assert.h>
 #include "catalog.h"
 int main(void){
@@ -17,7 +21,21 @@ int main(void){
  memset(&r,0,sizeof(r));assert(!catalog_byte(&r,'['));assert(!catalog_byte(&r,'{'));
  int result=0;for(unsigned i=0;i<sizeof(r.object);++i){result=catalog_byte(&r,'a');if(result<0)break;}assert(result<0);return 0;
 }'''
-  with tempfile.TemporaryDirectory() as d:
-   src=pathlib.Path(d)/'catalog.c';src.write_text(code);exe=str(pathlib.Path(d)/'catalog')
-   subprocess.run(['cc','-std=c11','-fsanitize=address,undefined','-g','-I'+str(ROOT/'apps/online-music/src'),str(src),'-o',exe],check=True)
-   subprocess.run([exe],check=True,timeout=10)
+        with tempfile.TemporaryDirectory() as d:
+            src = pathlib.Path(d) / 'catalog.c'
+            src.write_text(code)
+            exe = str(pathlib.Path(d) / 'catalog')
+            subprocess.run(
+                [
+                    'cc',
+                    '-std=c11',
+                    '-fsanitize=address,undefined',
+                    '-g',
+                    '-I' + str(ROOT / 'apps/online-music/src'),
+                    str(src),
+                    '-o',
+                    exe,
+                ],
+                check=True,
+            )
+            subprocess.run([exe], check=True, timeout=10)

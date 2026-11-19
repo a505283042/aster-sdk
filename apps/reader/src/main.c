@@ -32,43 +32,42 @@
 #include <aster_gfx_engine.h>
 #include <aster_text.h>
 
-#define WIN        8192u	/* file window, bytes */
-#define ANCHOR_N   128		/* page starts kept for backwards paging */
-#define LIST_N     48		/* browse entries */
-#define NAME_N     64
-#define PATH_N     160
-#define LINE_BUF   256		/* one visual line, UTF-8 bytes */
+#define WIN 8192u    /* file window, bytes */
+#define ANCHOR_N 128 /* page starts kept for backwards paging */
+#define LIST_N 48    /* browse entries */
+#define NAME_N 64
+#define PATH_N 160
+#define LINE_BUF 256 /* one visual line, UTF-8 bytes */
 
-#define TOP_H      28
-#define BODY_Y     (TOP_H + 6)
-#define PAD_X      8
-#define LIST_Y     (TOP_H + 8)
-#define TOP_BASE   (ASTER_TEXT_FACES[0].asc)	/* first baseline in the bar */
+#define TOP_H 28
+#define BODY_Y (TOP_H + 6)
+#define PAD_X 8
+#define LIST_Y (TOP_H + 8)
+#define TOP_BASE (ASTER_TEXT_FACES[0].asc) /* first baseline in the bar */
 
 /* One line of body text at the single face needs asc 21 + about 5 px of
  * descender. ROW_H 30 left the browse rows a 26 px panel, which a 20 px face
  * overflows by 4 px, so the row grew until the panel fits the ink. One fewer
  * row is visible; the scrollbar already handles that. */
-#define ROW_H      34
+#define ROW_H 34
 
-
-#define BACK_W     34u		/* top-left tap target */
+#define BACK_W 34u /* top-left tap target */
 
 /* Palette carried over from the retired ui.json reader so the app still
  * looks like itself: #0A0E1A / #131826 / #E6EBF5 / #5A6478 / #06B6D4. */
-#define COL_BG    ASTER_RGB565(10, 14, 26)
+#define COL_BG ASTER_RGB565(10, 14, 26)
 #define COL_PANEL ASTER_RGB565(19, 24, 38)
-#define COL_FG    ASTER_RGB565(230, 235, 245)
-#define COL_DIM   ASTER_RGB565(90, 100, 120)
-#define COL_ACC   ASTER_RGB565(6, 182, 212)
-#define COL_WARN  ASTER_RGB565(248, 113, 113)
+#define COL_FG ASTER_RGB565(230, 235, 245)
+#define COL_DIM ASTER_RGB565(90, 100, 120)
+#define COL_ACC ASTER_RGB565(6, 182, 212)
+#define COL_WARN ASTER_RGB565(248, 113, 113)
 
 /* There is one baked face and the ABI clamps everything onto it, so a size
  * ladder is no longer a choice -- 12 through 24 would all rasterize the same
  * 20 px glyphs. The ladder, the tap target that stepped through it and the
  * -/+ key bindings are all gone. What is left is the one size, named here
  * rather than spelled as a literal so it tracks a re-bake on its own. */
-#define READ_PX    (ASTER_TEXT_FACES[0].px)
+#define READ_PX (ASTER_TEXT_FACES[0].px)
 
 static aster_handle_t surf = ASTER_HANDLE_INVALID;
 static aster_ge_t ge;
@@ -109,20 +108,18 @@ static char win[WIN + 1];
 static uint32_t win_base, win_len;
 static char lbuf[LINE_BUF];
 
-static int mode;		/* 0 browse, 1 read */
+static int mode; /* 0 browse, 1 read */
 static int dirty = 1;
 static int32_t down_x = -1, down_y = -1;
 
 /* ---------------- small text helpers ---------------- */
 
-static void text_at(int32_t x, int32_t base, uint8_t px, uint16_t fg,
-		    const char *s)
+static void text_at(int32_t x, int32_t base, uint8_t px, uint16_t fg, const char *s)
 {
 	aster_ge_text(&ge, x, base, px, fg, ASTER_GFX_NOBG, s);
 }
 
-static void text_center(int32_t cx, int32_t base, uint8_t px, uint16_t fg,
-			const char *s)
+static void text_center(int32_t cx, int32_t base, uint8_t px, uint16_t fg, const char *s)
 {
 	int32_t w = aster_gfx_text_w(px, s, (uint32_t)strlen(s));
 
@@ -132,8 +129,7 @@ static void text_center(int32_t cx, int32_t base, uint8_t px, uint16_t fg,
 	text_at(cx - w / 2, base, px, fg, s);
 }
 
-static void text_right(int32_t rx, int32_t base, uint8_t px, uint16_t fg,
-		       const char *s)
+static void text_right(int32_t rx, int32_t base, uint8_t px, uint16_t fg, const char *s)
 {
 	int32_t w = aster_gfx_text_w(px, s, (uint32_t)strlen(s));
 
@@ -186,7 +182,7 @@ static void win_load(uint32_t off)
 	}
 	win_len = (uint32_t)n;
 	if (win_base + win_len > fsize) {
-		win_len = fsize - win_base;	/* card lies; trust fsize */
+		win_len = fsize - win_base; /* card lies; trust fsize */
 	}
 }
 
@@ -212,8 +208,7 @@ static int is_doc(const char *name)
 		char b = (char)(name[n - 2] | 32);
 		char c = (char)(name[n - 1] | 32);
 
-		return (a == 't' && b == 'x' && c == 't') ||
-		       (a == 'l' && b == 'r' && c == 'c');
+		return (a == 't' && b == 'x' && c == 't') || (a == 'l' && b == 'r' && c == 'c');
 	}
 }
 
@@ -313,7 +308,7 @@ static void path_pop(void)
 static void open_doc(const char *name)
 {
 	char path[PATH_N];
-	aster_stat_t st = { .size = sizeof(st), .version = 1 };
+	aster_stat_t st = {.size = sizeof(st), .version = 1};
 
 	if (strcmp(cwd, "/sd") == 0) {
 		aster_snprintf(path, PATH_N, "/sd/%s", name);
@@ -323,8 +318,7 @@ static void open_doc(const char *name)
 	if (aster_fs_stat(path, (uint32_t)strlen(path), &st, sizeof(st)) != ASTER_OK) {
 		return;
 	}
-	if (aster_fs_open(path, (uint32_t)strlen(path), ASTER_FS_O_RDONLY, &fh) !=
-	    ASTER_OK) {
+	if (aster_fs_open(path, (uint32_t)strlen(path), ASTER_FS_O_RDONLY, &fh) != ASTER_OK) {
 		fh = ASTER_HANDLE_INVALID;
 		return;
 	}
@@ -370,22 +364,21 @@ static void draw_top(void)
 		 * short of a size readout in the top-right corner, and that
 		 * readout is gone with the size ladder. */
 		text_at(34, TOP_BASE, READ_PX, COL_FG,
-			tail_fit(READ_PX, title, (int32_t)W - 34 - PAD_X));
+		        tail_fit(READ_PX, title, (int32_t)W - 34 - PAD_X));
 		aster_snprintf(buf, sizeof(buf), "%ld%%",
-			     (long)(fsize ? (page_off * 100u) / fsize : 0u));
+		               (long)(fsize ? (page_off * 100u) / fsize : 0u));
 		text_right((int32_t)W - PAD_X, TOP_BASE, READ_PX, COL_DIM, buf);
 		/* progress: how far into the file this page starts */
 		if (fsize) {
 			int32_t pw = (int32_t)((uint64_t)W * page_off / fsize);
 
 			if (pw > 1) {
-				aster_ge_rect(&ge, 0, TOP_H - 2, (uint32_t)pw, 2,
-					    COL_ACC);
+				aster_ge_rect(&ge, 0, TOP_H - 2, (uint32_t)pw, 2, COL_ACC);
 			}
 		}
 	} else {
 		text_at(34, TOP_BASE, READ_PX, COL_FG,
-			tail_fit(READ_PX, cwd, (int32_t)W - 34 - PAD_X));
+		        tail_fit(READ_PX, cwd, (int32_t)W - 34 - PAD_X));
 	}
 }
 
@@ -406,8 +399,7 @@ static int32_t draw_read(void)
 		 * cpfont faces are not resident, so a missing SD card would
 		 * otherwise look like an empty file. Say so instead. */
 		text_at(PAD_X, BODY_Y + asc, READ_PX, COL_WARN, "字体未就绪");
-		text_at(PAD_X, BODY_Y + asc + lh, READ_PX, COL_DIM,
-			"插卡后重启设备");
+		text_at(PAD_X, BODY_Y + asc + lh, READ_PX, COL_DIM, "插卡后重启设备");
 		next_off = page_off;
 		return aster_ge_present(&ge);
 	}
@@ -423,14 +415,13 @@ static int32_t draw_read(void)
 		avail = win_len - off;
 		next = aster_text_line(READ_PX, win + off, avail, maxw, &llen);
 		if (!next && !llen) {
-			break;		/* nothing consumed: stop, do not spin */
+			break; /* nothing consumed: stop, do not spin */
 		}
 		if (llen) {
 			cpy = llen < LINE_BUF - 1u ? llen : LINE_BUF - 1u;
 			memcpy(lbuf, win + off, cpy);
 			lbuf[cpy] = 0;
-			text_at(PAD_X, BODY_Y + asc + n * lh, READ_PX, COL_FG,
-				lbuf);
+			text_at(PAD_X, BODY_Y + asc + n * lh, READ_PX, COL_FG, lbuf);
 		}
 		n++;
 		pos += next;
@@ -438,8 +429,7 @@ static int32_t draw_read(void)
 	next_off = pos;
 
 	if (!n && !fsize) {
-		text_center((int32_t)W / 2, BODY_Y + asc + lh, READ_PX, COL_DIM,
-			    "空文件");
+		text_center((int32_t)W / 2, BODY_Y + asc + lh, READ_PX, COL_DIM, "空文件");
 	}
 	return aster_ge_present(&ge);
 }
@@ -453,11 +443,9 @@ static int32_t draw_browse(void)
 	draw_top();
 
 	if (!n_items) {
-		text_center((int32_t)W / 2, (int32_t)H / 2, READ_PX, COL_DIM,
-			    "没有文本文件");
-		text_center((int32_t)W / 2,
-			    (int32_t)H / 2 + aster_text_line_h(READ_PX), READ_PX,
-			    COL_DIM, "把 .txt / .lrc 放到卡上");
+		text_center((int32_t)W / 2, (int32_t)H / 2, READ_PX, COL_DIM, "没有文本文件");
+		text_center((int32_t)W / 2, (int32_t)H / 2 + aster_text_line_h(READ_PX), READ_PX,
+		            COL_DIM, "把 .txt / .lrc 放到卡上");
 		return aster_ge_present(&ge);
 	}
 
@@ -467,12 +455,10 @@ static int32_t draw_browse(void)
 		int on = (k == sel);
 		const char *shown = names[k];
 
-		aster_ge_rect_r(&ge, PAD_X, y, W - 2 * PAD_X, ROW_H - 4, COL_PANEL,
-			      6, on ? 1 : 0);
+		aster_ge_rect_r(&ge, PAD_X, y, W - 2 * PAD_X, ROW_H - 4, COL_PANEL, 6, on ? 1 : 0);
 		if (on) {
 			/* outline the cursor row; the fill still says what it is */
-			aster_ge_rect_r(&ge, PAD_X, y, W - 2 * PAD_X, ROW_H - 4,
-				      COL_ACC, 6, 1);
+			aster_ge_rect_r(&ge, PAD_X, y, W - 2 * PAD_X, ROW_H - 4, COL_ACC, 6, 1);
 		}
 		if (isdir_[k]) {
 			aster_snprintf(buf, sizeof(buf), "%s/", names[k]);
@@ -480,14 +466,13 @@ static int32_t draw_browse(void)
 			aster_snprintf(buf, sizeof(buf), "%s", names[k]);
 		}
 		if (aster_text_elide(READ_PX, buf, (uint32_t)strlen(buf),
-				   (int32_t)W - 2 * PAD_X - 24, lbuf,
-				   LINE_BUF) >= 0) {
+		                     (int32_t)W - 2 * PAD_X - 24, lbuf, LINE_BUF) >= 0) {
 			shown = lbuf;
 		}
 		/* Baseline at the panel top + asc, so the ink starts flush with
 		 * the rounded rect instead of floating in the middle of it. */
 		text_at(PAD_X + 8, y + aster_text_asc(READ_PX), READ_PX,
-			isdir_[k] ? COL_ACC : COL_FG, shown);
+		        isdir_[k] ? COL_ACC : COL_FG, shown);
 	}
 	/* scrollbar, only when the list does not fit */
 	if (n_items > list_vis()) {
@@ -526,8 +511,7 @@ static void page(int dir)
 		} else {
 			/* Stack full: drop the older half. Backwards paging
 			 * then stops earlier, which beats unbounded growth. */
-			memmove(anchor, anchor + ANCHOR_N / 2,
-				(ANCHOR_N / 2) * sizeof(anchor[0]));
+			memmove(anchor, anchor + ANCHOR_N / 2, (ANCHOR_N / 2) * sizeof(anchor[0]));
 			anchor_n = ANCHOR_N / 2;
 			anchor[anchor_n++] = page_off;
 		}
@@ -633,7 +617,7 @@ static void on_touch(const aster_event_t *ev)
 			}
 			return;
 		}
-		if (adx > 32 || ady > 32) {	/* swipe */
+		if (adx > 32 || ady > 32) { /* swipe */
 			if (mode == 1) {
 				if (adx >= ady) {
 					page(dx < 0 ? 1 : -1);
@@ -672,13 +656,13 @@ static void on_touch(const aster_event_t *ev)
 
 /* Keyboard, for boards that have one and for `hw key inject` in tests. The
  * ABI forwards raw evdev codes; only the handful below are given meaning. */
-#define K_ESC   1u
+#define K_ESC 1u
 #define K_ENTER 28u
 #define K_SPACE 57u
-#define K_UP    103u
-#define K_LEFT  105u
+#define K_UP 103u
+#define K_LEFT 105u
 #define K_RIGHT 106u
-#define K_DOWN  108u
+#define K_DOWN 108u
 
 static void key_back(void)
 {
@@ -734,10 +718,12 @@ static void on_key(const aster_event_t *ev)
 ASTER_APP_EXPORT int aster_app_init(void)
 {
 	aster_surface_desc_t d = {
-		.size = sizeof(d), .version = 1, .format = ASTER_PIXEL_NATIVE,
-		.flags = ASTER_SURFACE_F_PANEL_CANVAS,
+	        .size = sizeof(d),
+	        .version = 1,
+	        .format = ASTER_PIXEL_NATIVE,
+	        .flags = ASTER_SURFACE_F_PANEL_CANVAS,
 	};
-	aster_surface_buffer_t buf = { .size = sizeof(buf), .version = 1 };
+	aster_surface_buffer_t buf = {.size = sizeof(buf), .version = 1};
 	int32_t err;
 
 	aster_app_set_framerate(20);
@@ -752,13 +738,11 @@ ASTER_APP_EXPORT int aster_app_init(void)
 	}
 	W = buf.width;
 	H = buf.height;
-	aster_ge_init(&ge, surf, W, H, ring, sizeof(ring) / sizeof(ring[0]),
-		    arena, sizeof(arena));
+	aster_ge_init(&ge, surf, W, H, ring, sizeof(ring) / sizeof(ring[0]), arena, sizeof(arena));
 
 	scan_dir();
-	aster_logf(ASTER_LOG_INFO, "reader %ux%u %d items %upx canvas=%d", W, H,
-		 n_items, (unsigned)READ_PX,
-		 (buf.flags & ASTER_SURFACE_F_PANEL_CANVAS) != 0u);
+	aster_logf(ASTER_LOG_INFO, "reader %ux%u %d items %upx canvas=%d", W, H, n_items,
+	           (unsigned)READ_PX, (buf.flags & ASTER_SURFACE_F_PANEL_CANVAS) != 0u);
 	return ASTER_OK;
 }
 

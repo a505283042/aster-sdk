@@ -22,7 +22,12 @@ def function(source, name):
 class NeonDuelInput(unittest.TestCase):
     def test_two_touch_controls_and_lifecycle_under_sanitizers(self):
         source = (APP / 'src/main.c').read_text()
-        touch = source.split('}else if(ev->type==ASTER_EVENT_TOUCH){', 1)[1].split('}else if(ev->type==ASTER_EVENT_KEY){', 1)[0]
+        touch = re.search(
+            r'\}\s*else if\s*\(ev->type\s*==\s*ASTER_EVENT_TOUCH\)\s*\{(.*?)'
+            r'\}\s*else if\s*\(ev->type\s*==\s*ASTER_EVENT_KEY\)\s*\{',
+            source,
+            re.S,
+        ).group(1)
         helpers = ''.join(function(source, name) for name in ('clear_input', 'update_held', 'hit_button', 'aster_app_pause', 'aster_app_resume'))
         code = r'''
 #include <assert.h>

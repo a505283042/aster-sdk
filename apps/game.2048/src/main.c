@@ -13,16 +13,16 @@
 #include <aster/audio.h>
 #include <aster_text.h>
 
-#define N     4
-#define CELL  52
-#define GAP   6
+#define N 4
+#define CELL 52
+#define GAP 6
 /* Two 20 px baselines, 26 apart, plus their ink. The old HUD 44 held two
  * 12 px lines at baselines 18 and 32; at the single face the first baseline
  * alone has to clear 21 (the ascent) or the ink rows run off the top of the
  * screen, and the second lands at 21 + 26 = 47 with the 'p'-class descenders
  * of nothing here -- digits and capitals sit ON the baseline -- reaching 47.
  * 60 leaves the board's own background (oy - GAP) 8 px below that. */
-#define HUD   60
+#define HUD 60
 
 /* Tile number. The ABI exposes no font-metric query, so these are read out
  * of the baked .cpfont's glyph records, not guessed:
@@ -45,30 +45,30 @@
  * the tile swelling rather than as a bug. 6 digits (131072, only reachable
  * by continuing past a win twice) WOULD overlap its neighbour; the game has
  * no answer for that and neither does this layout. */
-#define NUM_PX   ((int)ASTER_TEXT_FACES[0].px)
-#define NUM_H    16	/* tallest digit ink height, rows */
-#define NUM_TOP  15	/* rows from the baseline up to that ink's top */
+#define NUM_PX ((int)ASTER_TEXT_FACES[0].px)
+#define NUM_H 16   /* tallest digit ink height, rows */
+#define NUM_TOP 15 /* rows from the baseline up to that ink's top */
 #define NUM_BASE ((CELL - NUM_H) / 2 + NUM_TOP)
-#define TILE_R   6
+#define TILE_R 6
 
 /* GAME OVER / YOU WIN panel, horizontally centred at runtime. Two 20 px lines
  * 26 apart: ink rows [27-15, 27] = 12..27 for the title (capitals, no
  * descender, so it stops on its baseline) and 38..53 for the sub ('tap
  * restart' descends 5 below its baseline of 53, so its ink runs to 58). 64
  * gives 12 px above the title's ink and 6 below the sub's. */
-#define OVL_Y  140
-#define OVL_W  184
-#define OVL_H  64
-#define OVL_T1 (OVL_Y + 27)	/* title baseline */
-#define OVL_T2 (OVL_Y + 53)	/* sub baseline: one line step below */
+#define OVL_Y 140
+#define OVL_W 184
+#define OVL_H 64
+#define OVL_T1 (OVL_Y + 27) /* title baseline */
+#define OVL_T2 (OVL_Y + 53) /* sub baseline: one line step below */
 
-#define COL_BG    ASTER_RGB565(250, 248, 239)
+#define COL_BG ASTER_RGB565(250, 248, 239)
 #define COL_BOARD ASTER_RGB565(187, 173, 160)
-#define COL_HUD   ASTER_RGB565(119, 110, 101)
+#define COL_HUD ASTER_RGB565(119, 110, 101)
 #define COL_MUTED ASTER_RGB565(160, 150, 140)
 #define COL_PANEL ASTER_RGB565(238, 228, 218)
-#define COL_WIN   ASTER_RGB565(237, 194, 46)
-#define COL_OVER  ASTER_RGB565(246, 94, 59)
+#define COL_WIN ASTER_RGB565(237, 194, 46)
+#define COL_OVER ASTER_RGB565(246, 94, 59)
 
 static aster_handle_t surf = ASTER_HANDLE_INVALID;
 static aster_ge_t ge;
@@ -86,7 +86,9 @@ static uint32_t rng;
 static int32_t down_x = -1, down_y = -1;
 static int32_t ox, oy;
 static int audio_ready, music_on = 1, sfx_on = 1, music_failed;
+
 enum { AUDIO_NONE, AUDIO_MUSIC, AUDIO_EFFECT };
+
 static int audio_kind;
 static int32_t effect_handles[4];
 
@@ -96,8 +98,10 @@ static const char *const merge_path = "/assets/audio/merge.wav";
 static const char *const win_path = "/assets/audio/win.wav";
 static const char *const over_path = "/assets/audio/over.wav";
 static const char *const effect_paths[4] = {
-	"/assets/audio/slide.wav", "/assets/audio/merge.wav",
-	"/assets/audio/win.wav", "/assets/audio/over.wav",
+        "/assets/audio/slide.wav",
+        "/assets/audio/merge.wav",
+        "/assets/audio/win.wav",
+        "/assets/audio/over.wav",
 };
 
 static void audio_load_effects(void)
@@ -106,8 +110,8 @@ static void audio_load_effects(void)
 		return;
 	}
 	for (int i = 0; i < 4; i++) {
-		int32_t handle = aster_audio_effect_load(effect_paths[i],
-			(uint32_t)strlen(effect_paths[i]));
+		int32_t handle =
+		        aster_audio_effect_load(effect_paths[i], (uint32_t)strlen(effect_paths[i]));
 		effect_handles[i] = handle > 0 ? handle : 0;
 	}
 }
@@ -143,7 +147,7 @@ static void audio_effect(const char *path)
 
 static void audio_tick(void)
 {
-	aster_audio_state_t st = { .size = sizeof(st), .version = 2 };
+	aster_audio_state_t st = {.size = sizeof(st), .version = 2};
 
 	if (!audio_ready || aster_audio_get_state(&st, sizeof(st)) != ASTER_OK) {
 		return;
@@ -195,19 +199,32 @@ static uint32_t rnd(void)
 static uint16_t tile_bg(uint32_t v)
 {
 	switch (v) {
-	case 0:    return ASTER_RGB565(205, 193, 180);
-	case 2:    return ASTER_RGB565(238, 228, 218);
-	case 4:    return ASTER_RGB565(237, 224, 200);
-	case 8:    return ASTER_RGB565(242, 177, 121);
-	case 16:   return ASTER_RGB565(245, 149, 99);
-	case 32:   return ASTER_RGB565(246, 124, 95);
-	case 64:   return ASTER_RGB565(246, 94, 59);
-	case 128:  return ASTER_RGB565(237, 207, 114);
-	case 256:  return ASTER_RGB565(237, 204, 97);
-	case 512:  return ASTER_RGB565(237, 200, 80);
-	case 1024: return ASTER_RGB565(237, 197, 63);
-	case 2048: return ASTER_RGB565(237, 194, 46);
-	default:   return ASTER_RGB565(60, 58, 50);
+	case 0:
+		return ASTER_RGB565(205, 193, 180);
+	case 2:
+		return ASTER_RGB565(238, 228, 218);
+	case 4:
+		return ASTER_RGB565(237, 224, 200);
+	case 8:
+		return ASTER_RGB565(242, 177, 121);
+	case 16:
+		return ASTER_RGB565(245, 149, 99);
+	case 32:
+		return ASTER_RGB565(246, 124, 95);
+	case 64:
+		return ASTER_RGB565(246, 94, 59);
+	case 128:
+		return ASTER_RGB565(237, 207, 114);
+	case 256:
+		return ASTER_RGB565(237, 204, 97);
+	case 512:
+		return ASTER_RGB565(237, 200, 80);
+	case 1024:
+		return ASTER_RGB565(237, 197, 63);
+	case 2048:
+		return ASTER_RGB565(237, 194, 46);
+	default:
+		return ASTER_RGB565(60, 58, 50);
 	}
 }
 
@@ -218,8 +235,7 @@ static uint16_t tile_fg(uint32_t v)
 
 /* Centred run at `base`. Measures rather than assuming tabular advances:
  * the size snaps to a baked cpfont face whose advances are the font's. */
-static void text_center(int32_t cx, int32_t base, uint32_t px, uint16_t fg,
-			const char *s)
+static void text_center(int32_t cx, int32_t base, uint32_t px, uint16_t fg, const char *s)
 {
 	int32_t w = aster_gfx_text_w(px, s, (uint32_t)strlen(s));
 
@@ -332,7 +348,7 @@ static void reset_game(void)
 /* Slide one line toward index 0. Returns 1 if anything changed. */
 static int slide4(uint32_t a[N], uint32_t *add)
 {
-	uint32_t t[N] = { 0 };
+	uint32_t t[N] = {0};
 	int n = 0, merged = 0, i, changed = 0;
 
 	for (i = 0; i < N; i++) {
@@ -434,21 +450,20 @@ static void draw_hud(void)
 	aster_snprintf(line, (int)sizeof(line), "SCORE %u", (unsigned)score);
 	aster_ge_text(&ge, 8, b1, NUM_PX, COL_HUD, ASTER_GFX_NOBG, line);
 	aster_snprintf(line, (int)sizeof(line), "BEST %u", (unsigned)best);
-	aster_ge_text(&ge, 8, b1 + ASTER_TEXT_FACES[0].line_h, NUM_PX, COL_MUTED,
-		    ASTER_GFX_NOBG, line);
+	aster_ge_text(&ge, 8, b1 + ASTER_TEXT_FACES[0].line_h, NUM_PX, COL_MUTED, ASTER_GFX_NOBG,
+	              line);
 	/* Two independent controls in the right half of the HUD. */
 	const char *music = music_on ? "BGM ON" : "BGM OFF";
 	w = aster_gfx_text_w(NUM_PX, music, (uint32_t)strlen(music));
 	if (w > 0) {
 		aster_ge_text(&ge, (int32_t)W - 8 - w, b1, NUM_PX,
-			    audio_ready ? COL_HUD : COL_MUTED, ASTER_GFX_NOBG, music);
+		              audio_ready ? COL_HUD : COL_MUTED, ASTER_GFX_NOBG, music);
 	}
 	const char *sfx = sfx_on ? "SFX ON" : "SFX OFF";
 	w = aster_gfx_text_w(NUM_PX, sfx, (uint32_t)strlen(sfx));
 	if (w > 0) {
-		aster_ge_text(&ge, (int32_t)W - 8 - w,
-			    b1 + ASTER_TEXT_FACES[0].line_h, NUM_PX, COL_MUTED,
-			    ASTER_GFX_NOBG, sfx);
+		aster_ge_text(&ge, (int32_t)W - 8 - w, b1 + ASTER_TEXT_FACES[0].line_h, NUM_PX,
+		              COL_MUTED, ASTER_GFX_NOBG, sfx);
 	}
 }
 
@@ -469,8 +484,8 @@ static void draw_tile(int r, int c)
 	if (tw < 0) {
 		return;
 	}
-	aster_ge_text(&ge, x + ((int32_t)CELL - tw) / 2, y + NUM_BASE, NUM_PX,
-		    tile_fg(v), ASTER_GFX_NOBG, num);
+	aster_ge_text(&ge, x + ((int32_t)CELL - tw) / 2, y + NUM_BASE, NUM_PX, tile_fg(v),
+	              ASTER_GFX_NOBG, num);
 }
 
 static void draw_overlay(const char *title, uint16_t border, const char *sub)
@@ -528,9 +543,8 @@ static void on_touch(const aster_event_t *ev)
 	}
 	dx = x - down_x;
 	dy = y - down_y;
-	if (down_x >= (int32_t)W - 92 && x >= (int32_t)W - 92 &&
-	    down_y >= 0 && down_y < HUD && y >= 0 && y < HUD &&
-	    dx > -16 && dx < 16 && dy > -16 && dy < 16) {
+	if (down_x >= (int32_t)W - 92 && x >= (int32_t)W - 92 && down_y >= 0 && down_y < HUD &&
+	    y >= 0 && y < HUD && dx > -16 && dx < 16 && dy > -16 && dy < 16) {
 		if (y < 30) {
 			audio_toggle_music();
 		} else {
@@ -565,17 +579,19 @@ static void on_touch(const aster_event_t *ev)
 ASTER_APP_EXPORT int aster_app_init(void)
 {
 	aster_surface_desc_t d = {
-		.size = sizeof(d), .version = 1, .format = ASTER_PIXEL_NATIVE,
-		/* Panel canvas: this app repaints the whole board every frame
+	        .size = sizeof(d),
+	        .version = 1,
+	        .format = ASTER_PIXEL_NATIVE,
+	        /* Panel canvas: this app repaints the whole board every frame
 		 * (aster_ge_clear + scene), which is exactly the contract the
 		 * double-buffered canvas needs -- and it drops the ~7 ms
 		 * byte-order sweep out of every present. The firmware may
 		 * refuse (rotated panel, buffers busy); buf.flags below says
 		 * which one we got, and the engine path is identical either
 		 * way, so nothing else here depends on the answer. */
-		.flags = ASTER_SURFACE_F_PANEL_CANVAS,
+	        .flags = ASTER_SURFACE_F_PANEL_CANVAS,
 	};
-	aster_surface_buffer_t buf = { .size = sizeof(buf), .version = 1 };
+	aster_surface_buffer_t buf = {.size = sizeof(buf), .version = 1};
 	int32_t err;
 
 	aster_app_set_framerate(20);
@@ -590,8 +606,7 @@ ASTER_APP_EXPORT int aster_app_init(void)
 	}
 	W = buf.width;
 	H = buf.height;
-	aster_ge_init(&ge, surf, W, H, ring, sizeof(ring) / sizeof(ring[0]),
-		    arena, sizeof(arena));
+	aster_ge_init(&ge, surf, W, H, ring, sizeof(ring) / sizeof(ring[0]), arena, sizeof(arena));
 	ox = (int32_t)(W - ((uint32_t)N * CELL + (uint32_t)(N - 1) * GAP)) / 2;
 	oy = HUD;
 	rng = aster_time_now_ms() ^ 0x20482048u;
@@ -612,8 +627,8 @@ ASTER_APP_EXPORT int aster_app_init(void)
 	reset_game();
 	audio_load_effects();
 	audio_start_music();
-	aster_logf(ASTER_LOG_INFO, "2048 %ux%u best=%u canvas=%d", W, H,
-		 (unsigned)best, (buf.flags & ASTER_SURFACE_F_PANEL_CANVAS) != 0u);
+	aster_logf(ASTER_LOG_INFO, "2048 %ux%u best=%u canvas=%d", W, H, (unsigned)best,
+	           (buf.flags & ASTER_SURFACE_F_PANEL_CANVAS) != 0u);
 	return ASTER_OK;
 }
 
@@ -678,9 +693,8 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *ev)
 				 * is the same full-screen shape the board math
 				 * assumes. */
 				drew = 1;
-				aster_logf(ASTER_LOG_INFO,
-					 "2048 first frame: %d cmds, %ux%u", ran,
-					 W, H);
+				aster_logf(ASTER_LOG_INFO, "2048 first frame: %d cmds, %ux%u", ran,
+				           W, H);
 			}
 		}
 		break;

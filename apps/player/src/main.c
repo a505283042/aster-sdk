@@ -25,40 +25,40 @@
 #include <aster/audio.h>
 #include <aster_text.h>
 
-#define LIST_N     64
-#define NAME_N     64
-#define PATH_N     160
+#define LIST_N 64
+#define NAME_N 64
+#define PATH_N 160
 
-#define LYR_BUF    6144u	/* firmware caps its own blob at 12288 */
-#define LYR_N      96
+#define LYR_BUF 6144u /* firmware caps its own blob at 12288 */
+#define LYR_N 96
 
 /* There is one baked face and the ABI clamps every size onto it, so the
  * size arguments below are all the same thing. They used to be three
  * different numbers (16 for content, 14 for the bar, 12 for the small
  * print) and each was a separate guess about how much room it had. */
-#define PLAY_PX    (ASTER_TEXT_FACES[0].px)
-#define PLAY_ASC   ((int32_t)ASTER_TEXT_FACES[0].asc)   /* first baseline */
-#define PLAY_LH    ((int32_t)ASTER_TEXT_FACES[0].line_h) /* baseline step */
+#define PLAY_PX (ASTER_TEXT_FACES[0].px)
+#define PLAY_ASC ((int32_t)ASTER_TEXT_FACES[0].asc)   /* first baseline */
+#define PLAY_LH ((int32_t)ASTER_TEXT_FACES[0].line_h) /* baseline step */
 
-#define TOP_H      28
-#define TOP_BASE   PLAY_ASC	/* largest ascent that still fits TOP_H */
-#define LIST_Y     (TOP_H + 8)
+#define TOP_H 28
+#define TOP_BASE PLAY_ASC /* largest ascent that still fits TOP_H */
+#define LIST_Y (TOP_H + 8)
 /* One line at the single face is asc 21 + ~5 descender; ROW_H 30 left a
  * 26 px panel and the ink ran 4 px past it. */
-#define ROW_H      34
+#define ROW_H 34
 
 /* Lyric lines are BASELINE positions, so the count has to come from the
  * panel height divided by the real line step -- it was a literal 13 sized
  * for the old 21 px step, and at 26 that would have run the last three
  * lines off the bottom of the screen. Computed at use, not defined, because
  * the face metrics are not integer constant expressions. */
-#define LYR_TOP    (TOP_H + 10)
-#define LYR_LINE   96		/* longest stored lyric line, UTF-8 bytes */
+#define LYR_TOP (TOP_H + 10)
+#define LYR_LINE 96 /* longest stored lyric line, UTF-8 bytes */
 
 /* Transport geometry (240x320). */
-#define PB_CX      120
-#define PB_CY      252
-#define PB_R       30
+#define PB_CX 120
+#define PB_CY 252
+#define PB_R 30
 /* The now-playing page stacks downward: cover (36..160), title, progress bar
  * (PBAR_Y .. PBAR_Y + PBAR_H - 1), time labels, transport (PB_CY +/- PB_R =
  * 222..282), volume (VOL_Y .. VOL_Y + 5 = 296..301).
@@ -70,21 +70,21 @@
  * They clear each other because the labels sit at the far left and right
  * (measured on the glass: 0..100 and 140..240) while the transport is
  * centred -- no accent-coloured pixel lands in rows 208..224. */
-#define PBAR_H     8
-#define PBAR_Y     192
-#define TIME_BASE  (PBAR_Y + PBAR_H + 2 + PLAY_ASC)
-#define VOL_Y      296
-#define VOL_BAND   290		/* tap band top */
+#define PBAR_H 8
+#define PBAR_Y 192
+#define TIME_BASE (PBAR_Y + PBAR_H + 2 + PLAY_ASC)
+#define VOL_Y 296
+#define VOL_BAND 290 /* tap band top */
 
 /* Palette carried over from the retired ui.json player so it still looks
  * like itself: #2C3A3E / #3D4C50 / #FFFFFF / #E8C547 / #D45A4A. */
-#define COL_BG    ASTER_RGB565(44, 58, 62)
+#define COL_BG ASTER_RGB565(44, 58, 62)
 #define COL_PANEL ASTER_RGB565(61, 76, 80)
-#define COL_FG    ASTER_RGB565(255, 255, 255)
-#define COL_DIM   ASTER_RGB565(154, 168, 172)
-#define COL_ACC   ASTER_RGB565(232, 197, 71)
+#define COL_FG ASTER_RGB565(255, 255, 255)
+#define COL_DIM ASTER_RGB565(154, 168, 172)
+#define COL_ACC ASTER_RGB565(232, 197, 71)
 #define COL_TRACK ASTER_RGB565(30, 42, 46)
-#define COL_ERR   ASTER_RGB565(212, 90, 74)
+#define COL_ERR ASTER_RGB565(212, 90, 74)
 
 static aster_handle_t surf = ASTER_HANDLE_INVALID;
 static aster_ge_t ge;
@@ -112,10 +112,10 @@ static uint32_t seen_state = 0xFFFFFFFFu;
 static int32_t seen_sec = -1;
 static int32_t seen_vol = -1;
 static int seen_lyr = -2;
-static int saw_playing;		/* a PLAYING edge since the last start */
-static int fetching;		/* a start_file is in flight */
-static int32_t last_ms;		/* position at the last PLAYING report ... */
-static int32_t last_total;	/* ... and the duration that went with it */
+static int saw_playing;    /* a PLAYING edge since the last start */
+static int fetching;       /* a start_file is in flight */
+static int32_t last_ms;    /* position at the last PLAYING report ... */
+static int32_t last_total; /* ... and the duration that went with it */
 
 static char lyr[LYR_BUF];
 static uint32_t lyr_ms[LYR_N];
@@ -123,24 +123,22 @@ static uint16_t lyr_off[LYR_N];
 static uint16_t lyr_len[LYR_N];
 static int lyr_n, lyr_for = -1;
 
-static int page;		/* 0 library, 1 now, 2 lyrics */
+static int page; /* 0 library, 1 now, 2 lyrics */
 static int dirty = 1;
 static int32_t down_x = -1, down_y = -1;
 static char fitbuf[NAME_N];
 static char lyline[LYR_LINE + 4];
-static char err_line[NAME_N + 24];	/* toast on the library page */
-static int err_frames;			/* >0: banner is up, counts down */
+static char err_line[NAME_N + 24]; /* toast on the library page */
+static int err_frames;             /* >0: banner is up, counts down */
 
 /* ---------------- drawing helpers ---------------- */
 
-static void text_at(int32_t x, int32_t base, uint8_t px, uint16_t fg,
-		    const char *s)
+static void text_at(int32_t x, int32_t base, uint8_t px, uint16_t fg, const char *s)
 {
 	aster_ge_text(&ge, x, base, px, fg, ASTER_GFX_NOBG, s);
 }
 
-static void text_center(int32_t cx, int32_t base, uint8_t px, uint16_t fg,
-			const char *s)
+static void text_center(int32_t cx, int32_t base, uint8_t px, uint16_t fg, const char *s)
 {
 	int32_t w = aster_gfx_text_w(px, s, (uint32_t)strlen(s));
 
@@ -149,8 +147,7 @@ static void text_center(int32_t cx, int32_t base, uint8_t px, uint16_t fg,
 	}
 }
 
-static void text_right(int32_t rx, int32_t base, uint8_t px, uint16_t fg,
-		       const char *s)
+static void text_right(int32_t rx, int32_t base, uint8_t px, uint16_t fg, const char *s)
 {
 	int32_t w = aster_gfx_text_w(px, s, (uint32_t)strlen(s));
 
@@ -167,8 +164,7 @@ static const char *fit(uint8_t px, const char *s, int32_t maxw)
 	if (w >= 0 && w <= maxw) {
 		return s;
 	}
-	if (aster_text_elide(px, s, (uint32_t)strlen(s), maxw, fitbuf,
-			   sizeof(fitbuf)) < 0) {
+	if (aster_text_elide(px, s, (uint32_t)strlen(s), maxw, fitbuf, sizeof(fitbuf)) < 0) {
 		return "";
 	}
 	return fitbuf;
@@ -178,16 +174,14 @@ static void fmt_time(char *dst, int max, uint32_t ms)
 {
 	uint32_t s = ms / 1000u;
 
-	aster_snprintf(dst, max, "%u:%02u", (unsigned)(s / 60u),
-		     (unsigned)(s % 60u));
+	aster_snprintf(dst, max, "%u:%02u", (unsigned)(s / 60u), (unsigned)(s % 60u));
 }
 
 static void draw_top(const char *name)
 {
 	aster_ge_rect(&ge, 0, 0, W, TOP_H, COL_PANEL);
 	aster_ge_tri(&ge, 22, 7, 22, 21, 10, 14, COL_ACC);
-	text_at(34, TOP_BASE, PLAY_PX, COL_FG,
-		fit(PLAY_PX, name, (int32_t)W - 34 - 56));
+	text_at(34, TOP_BASE, PLAY_PX, COL_FG, fit(PLAY_PX, name, (int32_t)W - 34 - 56));
 	if (page == 1) {
 		text_right((int32_t)W - 8, TOP_BASE, PLAY_PX, COL_ACC, "词");
 	} else if (page == 2) {
@@ -209,8 +203,7 @@ static int is_audio(const char *name)
 		char b = (char)(name[n - 2] | 32);
 		char c = (char)(name[n - 1] | 32);
 
-		return (a == 'm' && b == 'p' && c == '3') ||
-		       (a == 'w' && b == 'a' && c == 'v') ||
+		return (a == 'm' && b == 'p' && c == '3') || (a == 'w' && b == 'a' && c == 'v') ||
 		       (a == 'p' && b == 'c' && c == 'm');
 	}
 }
@@ -317,7 +310,7 @@ static void play(int i, int now)
 		 * used to be is not where the user is looking. */
 		aster_logf(ASTER_LOG_ERROR, "player: start %s -> %d", path, e);
 		aster_snprintf(err_line, sizeof(err_line), "无法播放 %s", names[i]);
-		err_frames = 60;	/* ~3 s at the frame tick */
+		err_frames = 60; /* ~3 s at the frame tick */
 		cur = -1;
 		fetching = 0;
 	} else {
@@ -331,7 +324,7 @@ static void play(int i, int now)
 
 static void transport(void)
 {
-	aster_audio_state_t st = { .size = sizeof(st), .version = 2 };
+	aster_audio_state_t st = {.size = sizeof(st), .version = 2};
 
 	if (aster_audio_get_state(&st, sizeof(st)) != ASTER_OK) {
 		return;
@@ -341,7 +334,7 @@ static void transport(void)
 	} else if (st.state == ASTER_AUDIO_PAUSED) {
 		aster_audio_resume();
 	} else if (cur >= 0) {
-		play(cur, 0);	/* replaying: leave the page where it is */
+		play(cur, 0); /* replaying: leave the page where it is */
 	} else if (n_songs) {
 		play(0, 1);
 	}
@@ -424,7 +417,7 @@ static void lyrics_parse(void)
 			break;
 		}
 		line = p;
-		while (nts < 4) {	/* a line may carry several stamps */
+		while (nts < 4) { /* a line may carry several stamps */
 			uint32_t t;
 			int used = parse_ts(p, &t);
 
@@ -452,8 +445,7 @@ static void lyrics_parse(void)
 			uint32_t off = (uint32_t)(text - lyr);
 			uint32_t len = (uint32_t)(p - text);
 
-			while (len && (text[len - 1] == ' ' ||
-				       text[len - 1] == '\t')) {
+			while (len && (text[len - 1] == ' ' || text[len - 1] == '\t')) {
 				len--;
 			}
 			/* Store a bounded prefix, cut on a character
@@ -502,8 +494,7 @@ static void fetch_lyrics(void)
 		lyr[n] = 0;
 		lyrics_parse();
 	}
-	aster_logf(ASTER_LOG_INFO, "player: lyrics %d lines (%d B)",
-		 lyr_n, (int)(n > 0 ? n : 0));
+	aster_logf(ASTER_LOG_INFO, "player: lyrics %d lines (%d B)", lyr_n, (int)(n > 0 ? n : 0));
 }
 
 /* Index of the line playing at `ms`, or -1. */
@@ -531,10 +522,9 @@ static void draw_library(void)
 	aster_ge_clear(&ge, COL_BG);
 	draw_top("曲库");
 	if (!n_songs) {
-		text_center((int32_t)W / 2, (int32_t)H / 2, PLAY_PX, COL_DIM,
-			    "没有音频文件");
-		text_center((int32_t)W / 2, (int32_t)H / 2 + PLAY_LH, PLAY_PX,
-			    COL_DIM, "把 mp3 / wav 放到卡上");
+		text_center((int32_t)W / 2, (int32_t)H / 2, PLAY_PX, COL_DIM, "没有音频文件");
+		text_center((int32_t)W / 2, (int32_t)H / 2 + PLAY_LH, PLAY_PX, COL_DIM,
+		            "把 mp3 / wav 放到卡上");
 		return;
 	}
 	for (i = 0; i < list_vis() && scroll + i < n_songs; i++) {
@@ -545,17 +535,15 @@ static void draw_library(void)
 		/* Fill says what is playing, outline says where the cursor is:
 		 * the two are independent once you arrow away from the track
 		 * that is still sounding. */
-		aster_ge_rect_r(&ge, 8, y, W - 16, ROW_H - 4,
-			      playing ? COL_ACC : COL_PANEL, 6, 0);
+		aster_ge_rect_r(&ge, 8, y, W - 16, ROW_H - 4, playing ? COL_ACC : COL_PANEL, 6, 0);
 		if (k == sel) {
-			aster_ge_rect_r(&ge, 8, y, W - 16, ROW_H - 4, COL_ACC, 6,
-				      1);
+			aster_ge_rect_r(&ge, 8, y, W - 16, ROW_H - 4, COL_ACC, 6, 1);
 		}
 		aster_snprintf(buf, sizeof(buf), "%s", names[k]);
 		/* Baseline at the panel top + asc: flush with the rounded rect
 		 * rather than floating inside it. */
 		text_at(16, y + PLAY_ASC, PLAY_PX, playing ? COL_TRACK : COL_FG,
-			fit(PLAY_PX, buf, (int32_t)W - 40));
+		        fit(PLAY_PX, buf, (int32_t)W - 40));
 	}
 	if (n_songs > list_vis()) {
 		int32_t track = (int32_t)H - LIST_Y;
@@ -574,10 +562,8 @@ static void draw_library(void)
 	if (err_frames > 0) {
 		int32_t y = (int32_t)H - (PLAY_LH + 6);
 
-		aster_ge_rect_r(&ge, 8, y, W - 16, (uint32_t)(PLAY_LH + 4), COL_ERR,
-			      6, 0);
-		text_at(16, y + PLAY_ASC, PLAY_PX, COL_FG,
-			fit(PLAY_PX, err_line, (int32_t)W - 40));
+		aster_ge_rect_r(&ge, 8, y, W - 16, (uint32_t)(PLAY_LH + 4), COL_ERR, 6, 0);
+		text_at(16, y + PLAY_ASC, PLAY_PX, COL_FG, fit(PLAY_PX, err_line, (int32_t)W - 40));
 	}
 }
 
@@ -602,13 +588,12 @@ static void draw_now(const aster_audio_state_t *st)
 	/* cover */
 	aster_ge_rect_r(&ge, 20, 36, W - 40, 124, COL_PANEL, 16, 0);
 	aster_ge_rect_r(&ge, 26, 42, W - 52, 112, COL_TRACK, 12, 0);
-	draw_note((int32_t)W / 2 + 4, 100,
-		  st->state == ASTER_AUDIO_PLAYING ? COL_ACC : COL_DIM);
+	draw_note((int32_t)W / 2 + 4, 100, st->state == ASTER_AUDIO_PLAYING ? COL_ACC : COL_DIM);
 
 	/* title */
 	if (cur >= 0) {
 		text_center((int32_t)W / 2, 182, PLAY_PX, COL_FG,
-			    fit(PLAY_PX, names[cur], (int32_t)W - 20));
+		            fit(PLAY_PX, names[cur], (int32_t)W - 20));
 	} else {
 		text_center((int32_t)W / 2, 182, PLAY_PX, COL_DIM, "未选择曲目");
 	}
@@ -627,8 +612,7 @@ static void draw_now(const aster_audio_state_t *st)
 		if (fw < PBAR_H) {
 			fw = PBAR_H;
 		}
-		aster_ge_rect_r(&ge, 12, PBAR_Y, (uint32_t)fw, PBAR_H, COL_ACC,
-			      PBAR_H / 2, 0);
+		aster_ge_rect_r(&ge, 12, PBAR_Y, (uint32_t)fw, PBAR_H, COL_ACC, PBAR_H / 2, 0);
 	}
 	fmt_time(buf, sizeof(buf), st->msec_done);
 	text_at(12, TIME_BASE, PLAY_PX, COL_DIM, buf);
@@ -648,16 +632,14 @@ static void draw_now(const aster_audio_state_t *st)
 		aster_ge_rect(&ge, PB_CX - 11, PB_CY - 13, 8, 26, COL_TRACK);
 		aster_ge_rect(&ge, PB_CX + 3, PB_CY - 13, 8, 26, COL_TRACK);
 	} else {
-		aster_ge_tri(&ge, PB_CX - 9, PB_CY - 14, PB_CX - 9, PB_CY + 14,
-			   PB_CX + 14, PB_CY, COL_TRACK);
+		aster_ge_tri(&ge, PB_CX - 9, PB_CY - 14, PB_CX - 9, PB_CY + 14, PB_CX + 14, PB_CY,
+		             COL_TRACK);
 	}
 
 	/* volume: tap anywhere on the band to set it */
 	aster_ge_rect(&ge, 40, VOL_Y, W - 80, 6, COL_TRACK);
 	if (st->volume) {
-		aster_ge_rect(&ge, 40, VOL_Y,
-			    (uint32_t)((W - 80) * st->volume / 100u), 6,
-			    COL_ACC);
+		aster_ge_rect(&ge, 40, VOL_Y, (uint32_t)((W - 80) * st->volume / 100u), 6, COL_ACC);
 	}
 	aster_ge_rect(&ge, 30, VOL_Y - 3, 6, 12, COL_DIM);
 }
@@ -674,10 +656,9 @@ static void draw_lyrics(const aster_audio_state_t *st)
 		int32_t cy = (int32_t)H / 2;
 
 		text_center((int32_t)W / 2, cy, PLAY_PX, COL_DIM,
-			    aster_text_ready(PLAY_PX) ? "无歌词" : "字体未就绪");
+		            aster_text_ready(PLAY_PX) ? "无歌词" : "字体未就绪");
 		text_center((int32_t)W / 2, cy + PLAY_LH, PLAY_PX, COL_DIM,
-			    aster_text_ready(PLAY_PX) ? "同名 .lrc 或 ID3 歌词"
-						    : "插卡后重启设备");
+		            aster_text_ready(PLAY_PX) ? "同名 .lrc 或 ID3 歌词" : "插卡后重启设备");
 		return;
 	}
 	/* How many lines fit between the top bar and the bottom of the panel.
@@ -685,7 +666,7 @@ static void draw_lyrics(const aster_audio_state_t *st)
 	 * a step, and the ink runs ~5 px below its baseline. */
 	vis = ((int32_t)H - LYR_TOP - 5) / PLAY_LH;
 	if (vis < 1) {
-		vis = 0;	/* no room at all: draw the bar and nothing else */
+		vis = 0; /* no room at all: draw the bar and nothing else */
 	}
 
 	/* keep the current line mid-screen */
@@ -708,9 +689,8 @@ static void draw_lyrics(const aster_audio_state_t *st)
 		 * to, so a line too wide simply elides -- which is what the
 		 * narrow branch was doing anyway, just after a needless
 		 * re-measure at a size that no longer exists. */
-		text_center((int32_t)W / 2, base, PLAY_PX,
-			    k == idx ? COL_ACC : COL_DIM,
-			    fit(PLAY_PX, lyline, (int32_t)W - 16));
+		text_center((int32_t)W / 2, base, PLAY_PX, k == idx ? COL_ACC : COL_DIM,
+		            fit(PLAY_PX, lyline, (int32_t)W - 16));
 	}
 }
 
@@ -772,15 +752,15 @@ static void hit_transport(int32_t x, int32_t y)
  * The page cycle matters: the two header arrows are touch-only, so without
  * a key for it a device with no digitiser could never reach the transport
  * or lyric views at all. */
-#define K_ESC   1u	/* back: lyrics -> now -> library           */
-#define K_MINUS 12u	/* volume down, from any page               */
-#define K_EQUAL 13u	/* volume up                                */
+#define K_ESC 1u    /* back: lyrics -> now -> library           */
+#define K_MINUS 12u /* volume down, from any page               */
+#define K_EQUAL 13u /* volume up                                */
 #define K_ENTER 28u
-#define K_SPACE 57u	/* forward: library -> now -> lyrics -> ...  */
-#define K_UP    103u
-#define K_LEFT  105u
+#define K_SPACE 57u /* forward: library -> now -> lyrics -> ...  */
+#define K_UP 103u
+#define K_LEFT 105u
 #define K_RIGHT 106u
-#define K_DOWN  108u
+#define K_DOWN 108u
 
 static void set_volume(int delta)
 {
@@ -820,7 +800,7 @@ static void on_key(const aster_event_t *ev)
 		if (page == 0) {
 			play(sel, 1);
 		} else {
-			transport();	/* ENTER is the main verb of every page */
+			transport(); /* ENTER is the main verb of every page */
 		}
 		break;
 	case K_LEFT:
@@ -868,7 +848,7 @@ static void on_touch(const aster_event_t *ev)
 		int32_t ady = dy < 0 ? -dy : dy;
 
 		down_x = down_y = -1;
-		if (y < TOP_H && x < 34) {	/* back */
+		if (y < TOP_H && x < 34) { /* back */
 			page = page == 2 ? 1 : 0;
 			dirty = 1;
 			return;
@@ -881,9 +861,8 @@ static void on_touch(const aster_event_t *ev)
 		if (page == 0) {
 			if (adx > 32 || ady > 32) {
 				if (ady > adx) {
-					int32_t maxs = n_songs > list_vis()
-							      ? n_songs - list_vis()
-							      : 0;
+					int32_t maxs =
+					        n_songs > list_vis() ? n_songs - list_vis() : 0;
 					int32_t s = scroll + (dy < 0 ? 1 : -1);
 
 					if (s < 0) {
@@ -902,8 +881,7 @@ static void on_touch(const aster_event_t *ev)
 			if (y >= LIST_Y) {
 				int i = (int32_t)((y - LIST_Y) / ROW_H);
 
-				if (i >= 0 && i < list_vis() &&
-				    scroll + i < n_songs) {
+				if (i >= 0 && i < list_vis() && scroll + i < n_songs) {
 					play(scroll + i, 1);
 					dirty = 1;
 				}
@@ -927,10 +905,12 @@ static void on_touch(const aster_event_t *ev)
 ASTER_APP_EXPORT int aster_app_init(void)
 {
 	aster_surface_desc_t d = {
-		.size = sizeof(d), .version = 1, .format = ASTER_PIXEL_NATIVE,
-		.flags = ASTER_SURFACE_F_PANEL_CANVAS,
+	        .size = sizeof(d),
+	        .version = 1,
+	        .format = ASTER_PIXEL_NATIVE,
+	        .flags = ASTER_SURFACE_F_PANEL_CANVAS,
 	};
-	aster_surface_buffer_t buf = { .size = sizeof(buf), .version = 1 };
+	aster_surface_buffer_t buf = {.size = sizeof(buf), .version = 1};
 	int32_t err;
 
 	aster_app_set_framerate(20);
@@ -945,13 +925,11 @@ ASTER_APP_EXPORT int aster_app_init(void)
 	}
 	W = buf.width;
 	H = buf.height;
-	aster_ge_init(&ge, surf, W, H, ring, sizeof(ring) / sizeof(ring[0]),
-		    arena, sizeof(arena));
+	aster_ge_init(&ge, surf, W, H, ring, sizeof(ring) / sizeof(ring[0]), arena, sizeof(arena));
 
 	scan_all();
-	aster_logf(ASTER_LOG_INFO, "player %ux%u %d tracks in %s canvas=%d", W, H,
-		 n_songs, root,
-		 (buf.flags & ASTER_SURFACE_F_PANEL_CANVAS) != 0u);
+	aster_logf(ASTER_LOG_INFO, "player %ux%u %d tracks in %s canvas=%d", W, H, n_songs, root,
+	           (buf.flags & ASTER_SURFACE_F_PANEL_CANVAS) != 0u);
 	return ASTER_OK;
 }
 
@@ -978,7 +956,7 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *ev)
 	}
 
 	{
-		aster_audio_state_t st = { .size = sizeof(st), .version = 2 };
+		aster_audio_state_t st = {.size = sizeof(st), .version = 2};
 		int32_t sec, idx;
 
 		/* The toast comes down on its own clock, so the tick that
@@ -1017,8 +995,8 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *ev)
 				}
 			} else {
 				if (cur >= 0) {
-					aster_snprintf(err_line, sizeof(err_line),
-						     "无法播放 %s", names[cur]);
+					aster_snprintf(err_line, sizeof(err_line), "无法播放 %s",
+					               names[cur]);
 					err_frames = 60;
 				}
 				dirty = 1;
@@ -1032,9 +1010,8 @@ ASTER_APP_EXPORT void aster_app_event(const aster_event_t *ev)
 		/* aster_gfx_fonts_pending: baked bitmaps land asynchronously, so a
 		 * screen whose own state is unchanged may still be showing blank
 		 * boxes -- see the ABI note on the call. */
-		if (st.state != seen_state || st.volume != (uint32_t)seen_vol ||
-		    sec != seen_sec || idx != seen_lyr || dirty ||
-		    aster_gfx_fonts_pending()) {
+		if (st.state != seen_state || st.volume != (uint32_t)seen_vol || sec != seen_sec ||
+		    idx != seen_lyr || dirty || aster_gfx_fonts_pending()) {
 			seen_state = st.state;
 			seen_vol = (int32_t)st.volume;
 			seen_sec = sec;

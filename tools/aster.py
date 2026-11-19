@@ -19,7 +19,7 @@ ROOT = sdk_root()
 
 
 def packaged():
-    return getattr(sys, 'frozen', False) or (ROOT/'release.json').is_file()
+    return getattr(sys, 'frozen', False) or (ROOT / 'release.json').is_file()
 
 
 def home():
@@ -67,8 +67,12 @@ def target_for(explicit=None, project=None):
         selected = known[0]
     if not selected:
         # An experimental port must not change the existing stable default.
-        stable = [name for name in known if json.loads((ROOT / 'targets' / (name + '.json')).read_text())
-                  .get('status') == 'build-supported']
+        stable = [
+            name
+            for name in known
+            if json.loads((ROOT / 'targets' / (name + '.json')).read_text()).get('status')
+            == 'build-supported'
+        ]
         if len(stable) == 1:
             selected = stable[0]
     if selected not in known:
@@ -101,8 +105,11 @@ def create(args):
     manifest = re.sub(r'^name = .*$', lambda _: 'name = ' + name, manifest, flags=re.M)
     manifest += '\n[sdk]\ntarget = ' + json.dumps(target) + '\n'
     tomllib.loads(manifest)
-    shutil.copytree(template, destination,
-                    ignore=shutil.ignore_patterns('dist', 'build', '__pycache__', '*.pyc'))
+    shutil.copytree(
+        template,
+        destination,
+        ignore=shutil.ignore_patterns('dist', 'build', '__pycache__', '*.pyc'),
+    )
     (destination / 'app.toml').write_text(manifest, encoding='utf-8')
     print(destination)
     print(f'Next: cd {shlex.quote(str(destination))}; aster build; aster run')
@@ -117,16 +124,35 @@ def environment(shell):
         if pybin.is_dir():
             folders.append(pybin)
     if shell in ('bash', 'zsh', 'sh'):
-        return 'export ASTER_SDK=' + shlex.quote(str(base)) + '\nexport PATH=' + shlex.quote(':'.join(map(str, folders))) + ':"$PATH"\n'
+        return (
+            'export ASTER_SDK='
+            + shlex.quote(str(base))
+            + '\nexport PATH='
+            + shlex.quote(':'.join(map(str, folders)))
+            + ':"$PATH"\n'
+        )
     literal = lambda s: "'" + str(s).replace("'", "''") + "'"
     if shell == 'powershell':
-        return '$env:ASTER_SDK = ' + literal(base) + '\n$env:PATH = ' + literal(';'.join(map(str, folders))) + ' + ";" + $env:PATH\n'
-    return '@chcp 65001 >nul\nset "ASTER_SDK=' + str(base) + '"\nset "PATH=' + ';'.join(map(str, folders)) + ';%PATH%"\n'
+        return (
+            '$env:ASTER_SDK = '
+            + literal(base)
+            + '\n$env:PATH = '
+            + literal(';'.join(map(str, folders)))
+            + ' + ";" + $env:PATH\n'
+        )
+    return (
+        '@chcp 65001 >nul\nset "ASTER_SDK='
+        + str(base)
+        + '"\nset "PATH='
+        + ';'.join(map(str, folders))
+        + ';%PATH%"\n'
+    )
 
 
 def persist_path(profile=None):
     if os.name == 'nt':
         import winreg
+
         folder = str(home() if packaged() else home() / 'bin')
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, 'Environment') as key:
             try:
@@ -138,15 +164,32 @@ def persist_path(profile=None):
                 winreg.SetValueEx(key, 'Path', 0, kind, ';'.join([folder, *entries]))
         # Inform Explorer so terminals launched later inherit the new user PATH.
         import ctypes
+
         result = ctypes.c_size_t()
-        ctypes.windll.user32.SendMessageTimeoutW(0xFFFF, 0x001A, 0, ctypes.c_wchar_p('Environment'), 2, 5000, ctypes.byref(result))
+        ctypes.windll.user32.SendMessageTimeoutW(
+            0xFFFF, 0x001A, 0, ctypes.c_wchar_p('Environment'), 2, 5000, ctypes.byref(result)
+        )
         print('User PATH configured. Open a new terminal, or source env.ps1 now.')
     else:
-        path = Path(profile).expanduser() if profile else Path.home() / ('.zshrc' if os.environ.get('SHELL', '').endswith('zsh') else '.bashrc')
+        path = (
+            Path(profile).expanduser()
+            if profile
+            else Path.home()
+            / ('.zshrc' if os.environ.get('SHELL', '').endswith('zsh') else '.bashrc')
+        )
         marker = '# >>> Aster SDK >>>'
         block = marker + '\n. ' + shlex.quote(str(home() / 'env.sh')) + '\n# <<< Aster SDK <<<'
         text = path.read_text(encoding='utf-8') if path.exists() else ''
-        text = re.sub(r'(?m)^# >>> Aster SDK >>>\n.*?^# <<< Aster SDK <<<', lambda _: block, text, flags=re.S) if marker in text else text.rstrip('\n') + '\n\n' + block + '\n'
+        text = (
+            re.sub(
+                r'(?m)^# >>> Aster SDK >>>\n.*?^# <<< Aster SDK <<<',
+                lambda _: block,
+                text,
+                flags=re.S,
+            )
+            if marker in text
+            else text.rstrip('\n') + '\n\n' + block + '\n'
+        )
         path.write_text(text, encoding='utf-8')
         print(f'PATH configured in {path}. Source env.sh to activate this terminal.')
 
@@ -154,6 +197,7 @@ def persist_path(profile=None):
 def install(args):
     if os.name == 'posix' and not packaged():
         from sdk_install import repair_linux_links
+
         for path in repair_linux_links(ROOT / 'toolchain'):
             print('Restored Linux symlink: ' + str(path))
     if not packaged():
@@ -161,17 +205,28 @@ def install(args):
         python = venv / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
         if not python.is_file():
             subprocess.run([sys.executable, '-m', 'venv', str(venv)], check=True)
-        subprocess.run([str(python), '-m', 'pip', 'install', '-r', str(ROOT / 'requirements.txt')], check=True)
+        subprocess.run(
+            [str(python), '-m', 'pip', 'install', '-r', str(ROOT / 'requirements.txt')], check=True
+        )
         if args.flash:
             subprocess.run([str(python), '-m', 'pip', 'install', 'esptool>=5,<6'], check=True)
-    elif os.name=='nt' and (not executable('aster-toolchain') or not executable('aster-device')):
+    elif os.name == 'nt' and (not executable('aster-toolchain') or not executable('aster-device')):
         raise ValueError('Installation requires all three Windows executables in one directory')
     for filename, shell in [('env.sh', 'bash'), ('env.ps1', 'powershell'), ('env.cmd', 'cmd')]:
-        (home() / filename).write_text(environment(shell), encoding='utf-8-sig' if shell == 'powershell' else 'utf-8')
+        (home() / filename).write_text(
+            environment(shell), encoding='utf-8-sig' if shell == 'powershell' else 'utf-8'
+        )
     if args.add_path:
         persist_path(args.profile)
     print('SDK ready: ' + str(home()))
-    print('Activate: ' + ('. "' + str(home() / 'env.ps1') + '"' if os.name == 'nt' else 'source ' + shlex.quote(str(home() / 'env.sh'))))
+    print(
+        'Activate: '
+        + (
+            '. "' + str(home() / 'env.ps1') + '"'
+            if os.name == 'nt'
+            else 'source ' + shlex.quote(str(home() / 'env.sh'))
+        )
+    )
     return 0
 
 
@@ -180,12 +235,13 @@ def build_project(args):
     hardware = getattr(args, 'hardware', None)
     if hardware:
         import aster_board
+
         selected = aster_board.get_hardware(hardware, args.target)
         target = selected['id']
     else:
         target = target_for(args.target, None if args.all else project)
     command = tool_command('build')
-    if os.name == 'nt' and len(command)==1 and command[0].endswith('.exe'):
+    if os.name == 'nt' and len(command) == 1 and command[0].endswith('.exe'):
         command.append('build')
     command += ['--target', target]
     if hardware:
@@ -214,13 +270,19 @@ def doctor():
             good &= found
         # Reuse the builder search order (including ASTER_WASI_SDK/ASTER_WAMRC).
         import build
+
         clang = build.find_clang()
         found = bool(clang) and Path(clang).is_file()
         print(f'clang: {clang if found else "MISSING"}')
         good &= found
         if found:
             try:
-                subprocess.run([str(clang), '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
+                subprocess.run(
+                    [str(clang), '--version'],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    check=True,
+                )
             except (OSError, subprocess.CalledProcessError) as error:
                 print(f'clang cannot execute: {error}; run aster install (repairs Linux symlinks)')
                 good = False
@@ -242,37 +304,64 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if version_requested(argv):
         return 0
-    if argv and argv[0] in ('firmware','sim'):
+    if argv and argv[0] in ('firmware', 'sim'):
         import components
-        return (components.firmware if argv[0]=='firmware' else components.simulator)(argv[1:])
+
+        return (components.firmware if argv[0] == 'firmware' else components.simulator)(argv[1:])
     device_commands = {'ports', 'probe', 'push', 'shell', 'debug', 'screenshot', 'flash'}
     if argv and argv[0] in device_commands:
         return subprocess.call(tool_command('device') + argv)
     if argv and argv[0] == 'server':
         import setup_server
+
         return setup_server.main(argv[1:])
     if argv and argv[0] == 'distribute':
         import static_distribution
+
         return static_distribution.main(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
-    commands.add_parser('firmware',add_help=False,help='List, download or flash pinned firmware')
-    commands.add_parser('sim',add_help=False,help='Launch the desktop system simulator')
-    commands.add_parser('server', add_help=False, help='First-boot resource server; use server --help')
-    commands.add_parser('distribute', add_help=False, help='Static release export/publish; use distribute --help')
+    commands.add_parser('firmware', add_help=False, help='List, download or flash pinned firmware')
+    commands.add_parser('sim', add_help=False, help='Launch the desktop system simulator')
+    commands.add_parser(
+        'server', add_help=False, help='First-boot resource server; use server --help'
+    )
+    commands.add_parser(
+        'distribute', add_help=False, help='Static release export/publish; use distribute --help'
+    )
     for name in ('targets', 'templates', 'doctor'):
         commands.add_parser(name)
-    setup = commands.add_parser('install', help='Install isolated Python dependencies and environment scripts')
+    setup = commands.add_parser(
+        'install', help='Install isolated Python dependencies and environment scripts'
+    )
     setup.add_argument('--add-path', action='store_true', help='Persist PATH for current user')
-    setup.add_argument('--profile', help='Linux shell profile to update instead of ~/.bashrc or ~/.zshrc')
-    setup.add_argument('--flash', action='store_true', help='Also install esptool (source installation only)')
-    env = commands.add_parser('env', aliases=['source'], help='Print environment commands for the calling shell')
-    env.add_argument('--shell', choices=['bash', 'zsh', 'sh', 'powershell', 'cmd'], default='powershell' if os.name == 'nt' else 'bash')
-    new = commands.add_parser('init', aliases=['new'], help='Create an independent project from a template')
+    setup.add_argument(
+        '--profile', help='Linux shell profile to update instead of ~/.bashrc or ~/.zshrc'
+    )
+    setup.add_argument(
+        '--flash', action='store_true', help='Also install esptool (source installation only)'
+    )
+    env = commands.add_parser(
+        'env', aliases=['source'], help='Print environment commands for the calling shell'
+    )
+    env.add_argument(
+        '--shell',
+        choices=['bash', 'zsh', 'sh', 'powershell', 'cmd'],
+        default='powershell' if os.name == 'nt' else 'bash',
+    )
+    new = commands.add_parser(
+        'init', aliases=['new'], help='Create an independent project from a template'
+    )
     new.add_argument('directory', type=Path)
     new.add_argument('--id')
     new.add_argument('--name')
-    new.add_argument('--template', default='hello', choices=sorted(p.name for p in (ROOT / 'templates').iterdir() if (p / 'app.toml').is_file()))
+    new.add_argument(
+        '--template',
+        default='hello',
+        choices=sorted(
+            p.name for p in (ROOT / 'templates').iterdir() if (p / 'app.toml').is_file()
+        ),
+    )
     new.add_argument('--target')
     for name in ('build', 'run'):
         cmd = commands.add_parser(name)
@@ -283,7 +372,9 @@ def main(argv=None):
         aot.add_argument('--aot', action='store_true')
         aot.add_argument('--no-aot', action='store_true')
         cmd.add_argument('--all', action='store_true', help='Build SDK examples (build only)')
-        cmd.add_argument('--clean', action='store_true', help='Delete project build/ and dist/ (build only)')
+        cmd.add_argument(
+            '--clean', action='store_true', help='Delete project build/ and dist/ (build only)'
+        )
         if name == 'run':
             cmd.add_argument('--port', default='auto')
             cmd.add_argument('--console', default='auto')
@@ -327,6 +418,7 @@ def main(argv=None):
             project = project_path(args.project)
             if args.hardware:
                 import aster_board
+
                 target = aster_board.get_hardware(args.hardware, args.target)['id']
             else:
                 target = target_for(args.target, project)
@@ -347,13 +439,26 @@ def main(argv=None):
         raise ValueError(f'Package missing: {package}; run aster build first')
     if args.command == 'verify':
         binary = executable('aster-toolchain') if os.name == 'nt' else None
-        command = [str(binary), 'verify'] if binary else [sys.executable, str(ROOT / 'tools/verify_ast.py')]
+        command = (
+            [str(binary), 'verify']
+            if binary
+            else [sys.executable, str(ROOT / 'tools/verify_ast.py')]
+        )
         command += ['--target', target]
         if args.pubkey:
             command += ['--pubkey', str(args.pubkey)]
         command.append(str(package))
     else:
-        command = tool_command('device') + ['deploy', str(package), '--target', target, '--port', args.port, '--console', args.console]
+        command = tool_command('device') + [
+            'deploy',
+            str(package),
+            '--target',
+            target,
+            '--port',
+            args.port,
+            '--console',
+            args.console,
+        ]
         if args.run:
             command.append('--run')
     return subprocess.call(command)

@@ -15,15 +15,15 @@
 
 static int g_pass, g_fail;
 
-#define CHECK(cond, name, ...)                                             \
-	do {                                                               \
-		if (cond) {                                                \
-			g_pass++;                                          \
-			aster_logf(ASTER_LOG_INFO, "PASS " name, ##__VA_ARGS__);\
-		} else {                                                   \
-			g_fail++;                                          \
-			aster_logf(ASTER_LOG_ERROR, "FAIL " name, ##__VA_ARGS__);\
-		}                                                          \
+#define CHECK(cond, name, ...) \
+	do { \
+		if (cond) { \
+			g_pass++; \
+			aster_logf(ASTER_LOG_INFO, "PASS " name, ##__VA_ARGS__); \
+		} else { \
+			g_fail++; \
+			aster_logf(ASTER_LOG_ERROR, "FAIL " name, ##__VA_ARGS__); \
+		} \
 	} while (0)
 
 #define PERM(e) ((e) == ASTER_EPERM)

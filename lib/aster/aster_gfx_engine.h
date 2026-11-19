@@ -32,7 +32,7 @@
 #ifndef ASTER_GFX_ENGINE_H
 #define ASTER_GFX_ENGINE_H
 
-#include <stddef.h>  /* builtin freestanding header */
+#include <stddef.h> /* builtin freestanding header */
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -47,22 +47,22 @@
  * pulls in via aster_imports.h; declare them here too so the header compiles
  * standalone under -nostdlib without clashing (identical prototypes). */
 #ifndef ASTER_LIBC_H
-void  *memcpy(void *dst, const void *src, size_t n);
-void  *memset(void *s, int c, size_t n);
+void *memcpy(void *dst, const void *src, size_t n);
+void *memset(void *s, int c, size_t n);
 size_t strlen(const char *s);
 #endif
 
 typedef struct {
 	aster_handle_t surf;
-	uint32_t w, h;		/* surface size (for auto dirty clamp) */
+	uint32_t w, h; /* surface size (for auto dirty clamp) */
 	aster_gfx_cmd_t *ring;
-	uint32_t ring_n;	/* capacity, commands */
-	uint32_t n;		/* queued */
+	uint32_t ring_n; /* capacity, commands */
+	uint32_t n;      /* queued */
 	uint8_t *arena;
 	uint32_t arena_cap, arena_used;
-	uint32_t dx0, dy0, dx1, dy1;	/* accumulated bounds */
+	uint32_t dx0, dy0, dx1, dy1; /* accumulated bounds */
 	bool dirty;
-	uint32_t frame_id; /* Nonzero only between explicit begin/present or cancel. */
+	uint32_t frame_id;     /* Nonzero only between explicit begin/present or cancel. */
 	uint32_t submit_calls; /* Actual ABI invocations, including auto-spills. */
 	/* Sticky first error: a failed reservation, or the first failing
 	 * submit. Later successes must not mask it -- the app learns about
@@ -70,9 +70,9 @@ typedef struct {
 	int32_t err;
 } aster_ge_t;
 
-static inline void aster_ge_init(aster_ge_t *g, aster_handle_t surf, uint32_t w,
-			       uint32_t h, aster_gfx_cmd_t *ring, uint32_t ring_n,
-			       uint8_t *arena, uint32_t arena_cap)
+static inline void aster_ge_init(aster_ge_t *g, aster_handle_t surf, uint32_t w, uint32_t h,
+                                 aster_gfx_cmd_t *ring, uint32_t ring_n, uint8_t *arena,
+                                 uint32_t arena_cap)
 {
 	memset(g, 0, sizeof(*g));
 	g->surf = surf;
@@ -95,36 +95,55 @@ static inline int32_t aster_ge_error(aster_ge_t *g)
 /* Optional frame transactions: no new WASM imports, so an APP still loads
  * on old hosts. BEGIN explicitly probes; ENOTSUP means keep the legacy path
  * only if the APP accepts partial publication. Never silently downgrade. */
-static inline int32_t aster_ge_frame_control(aster_ge_t *g,uint32_t action)
+static inline int32_t aster_ge_frame_control(aster_ge_t *g, uint32_t action)
 {
- aster_gfx_frame_control_t control={sizeof(control),1,action,
-  action==ASTER_GFX_FRAME_BEGIN||action==ASTER_GFX_FRAME_QUERY ? 0 : g->frame_id,0,0};
- g->submit_calls++;
- int32_t r=aster_gfx_exec(g->surf,0,ASTER_GFX_FRAME_CONTROL,(const uint8_t *)&control,
-  sizeof(control),ASTER_GFX_FRAME_MAGIC,1,0,0);
- if(r<0) return r;
- if(action==ASTER_GFX_FRAME_QUERY) return control.flags&ASTER_GFX_FRAME_SUPPORTED ? 0 : ASTER_ENOTSUP;
- if(action==ASTER_GFX_FRAME_BEGIN) {if(!control.frame_id) return ASTER_EABI;g->frame_id=control.frame_id;}
- return 0;
+	aster_gfx_frame_control_t control = {
+	        sizeof(control),
+	        1,
+	        action,
+	        action == ASTER_GFX_FRAME_BEGIN || action == ASTER_GFX_FRAME_QUERY ? 0
+	                                                                           : g->frame_id,
+	        0,
+	        0};
+	g->submit_calls++;
+	int32_t r = aster_gfx_exec(g->surf, 0, ASTER_GFX_FRAME_CONTROL, (const uint8_t *)&control,
+	                           sizeof(control), ASTER_GFX_FRAME_MAGIC, 1, 0, 0);
+	if (r < 0)
+		return r;
+	if (action == ASTER_GFX_FRAME_QUERY)
+		return control.flags & ASTER_GFX_FRAME_SUPPORTED ? 0 : ASTER_ENOTSUP;
+	if (action == ASTER_GFX_FRAME_BEGIN) {
+		if (!control.frame_id)
+			return ASTER_EABI;
+		g->frame_id = control.frame_id;
+	}
+	return 0;
 }
+
 static inline int32_t aster_ge_begin_frame(aster_ge_t *g)
 {
- if(g->frame_id||g->n||g->arena_used||g->dirty||g->err) return ASTER_ESTATE;
- int32_t r=aster_ge_frame_control(g,ASTER_GFX_FRAME_QUERY);
- if(r==ASTER_EINVAL) return ASTER_ENOTSUP;
- if(r<0) return r;
- return aster_ge_frame_control(g,ASTER_GFX_FRAME_BEGIN);
+	if (g->frame_id || g->n || g->arena_used || g->dirty || g->err)
+		return ASTER_ESTATE;
+	int32_t r = aster_ge_frame_control(g, ASTER_GFX_FRAME_QUERY);
+	if (r == ASTER_EINVAL)
+		return ASTER_ENOTSUP;
+	if (r < 0)
+		return r;
+	return aster_ge_frame_control(g, ASTER_GFX_FRAME_BEGIN);
 }
+
 static inline int32_t aster_ge_cancel_frame(aster_ge_t *g)
 {
- int32_t r=g->frame_id ? aster_ge_frame_control(g,ASTER_GFX_FRAME_CANCEL) : ASTER_ESTATE;
- g->frame_id=g->n=g->arena_used=0;g->dirty=false;g->err=0;return r;
+	int32_t r = g->frame_id ? aster_ge_frame_control(g, ASTER_GFX_FRAME_CANCEL) : ASTER_ESTATE;
+	g->frame_id = g->n = g->arena_used = 0;
+	g->dirty = false;
+	g->err = 0;
+	return r;
 }
 
 /* Push the auto-dirty box through the engine as an explicit present rect
  * (call after hand-painting with the v1 inline fns). */
-static inline int32_t aster_ge_touch(aster_ge_t *g, uint32_t x, uint32_t y,
-				   uint32_t w, uint32_t h)
+static inline int32_t aster_ge_touch(aster_ge_t *g, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
 	uint32_t x1 = x + w, y1 = y + h;
 
@@ -144,19 +163,22 @@ static inline int32_t aster_ge_touch(aster_ge_t *g, uint32_t x, uint32_t y,
 	return 0;
 }
 
-static inline int32_t aster_ge_exec(aster_ge_t *g, uint32_t px, uint32_t py,
-				  uint32_t pw, uint32_t ph)
+static inline int32_t aster_ge_exec(aster_ge_t *g, uint32_t px, uint32_t py, uint32_t pw,
+                                    uint32_t ph)
 {
 	if (g->err < 0) {
 		return g->err;
 	}
-	if(g->frame_id) {px=g->frame_id;py=ASTER_GFX_FRAME_MAGIC;pw=ph=0;}
+	if (g->frame_id) {
+		px = g->frame_id;
+		py = ASTER_GFX_FRAME_MAGIC;
+		pw = ph = 0;
+	}
 	g->submit_calls++;
 	/* n may be 0 with a dirty box from aster_ge_touch(): the hand-painted
 	 * flush path pushes that rect through the same call, so never skip
 	 * the submit on an empty ring. */
-	int32_t r = aster_gfx_exec(g->surf, g->ring, g->n, g->arena,
-				 g->arena_used, px, py, pw, ph);
+	int32_t r = aster_gfx_exec(g->surf, g->ring, g->n, g->arena, g->arena_used, px, py, pw, ph);
 
 	/* The ring and arena are scratch: they reset whether or not the
 	 * submit worked, so a failed batch is dropped rather than replayed
@@ -258,8 +280,8 @@ static inline void aster_ge_clear(aster_ge_t *g, uint16_t color)
 	aster_ge_touch(g, 0, 0, g->w, g->h);
 }
 
-static inline void aster_ge_rect(aster_ge_t *g, int32_t x, int32_t y, uint32_t w,
-			       uint32_t h, uint16_t color)
+static inline void aster_ge_rect(aster_ge_t *g, int32_t x, int32_t y, uint32_t w, uint32_t h,
+                                 uint16_t color)
 {
 	aster_gfx_cmd_t *c = aster_ge_room(g);
 
@@ -270,14 +292,12 @@ static inline void aster_ge_rect(aster_ge_t *g, int32_t x, int32_t y, uint32_t w
 	c->w[1] = ASTER_GFX_PACK((uint16_t)x, (uint16_t)y);
 	c->w[2] = ASTER_GFX_PACK(w, h);
 	c->w[3] = color;
-	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y),
-		     w, h);
+	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y), w, h);
 }
 
 /* radius r corners; outline=1 draws only the rounded border */
-static inline void aster_ge_rect_r(aster_ge_t *g, int32_t x, int32_t y, uint32_t w,
-				 uint32_t h, uint16_t color, uint16_t r,
-				 uint16_t outline)
+static inline void aster_ge_rect_r(aster_ge_t *g, int32_t x, int32_t y, uint32_t w, uint32_t h,
+                                   uint16_t color, uint16_t r, uint16_t outline)
 {
 	aster_gfx_cmd_t *c = aster_ge_room(g);
 
@@ -289,12 +309,11 @@ static inline void aster_ge_rect_r(aster_ge_t *g, int32_t x, int32_t y, uint32_t
 	c->w[2] = ASTER_GFX_PACK(w, h);
 	c->w[3] = color;
 	c->w[4] = ASTER_GFX_PACK(r, outline);
-	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y),
-		     w, h);
+	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y), w, h);
 }
 
-static inline void aster_ge_line_aa(aster_ge_t *g, int32_t x0, int32_t y0,
-				  int32_t x1, int32_t y1, uint16_t color)
+static inline void aster_ge_line_aa(aster_ge_t *g, int32_t x0, int32_t y0, int32_t x1, int32_t y1,
+                                    uint16_t color)
 {
 	aster_gfx_cmd_t *c = aster_ge_room(g);
 
@@ -309,16 +328,14 @@ static inline void aster_ge_line_aa(aster_ge_t *g, int32_t x0, int32_t y0,
 		int32_t mx = x0 < x1 ? x0 : x1, my = y0 < y1 ? y0 : y1;
 		int32_t xx = x0 < x1 ? x1 : x0, yy = y0 < y1 ? y1 : y0;
 
-		aster_ge_touch(g, (uint32_t)(mx > 0 ? mx : 0),
-			     (uint32_t)(my > 0 ? my : 0),
-			     (uint32_t)(xx - mx + 1), (uint32_t)(yy - my + 1));
+		aster_ge_touch(g, (uint32_t)(mx > 0 ? mx : 0), (uint32_t)(my > 0 ? my : 0),
+		               (uint32_t)(xx - mx + 1), (uint32_t)(yy - my + 1));
 	}
 }
 
 /* filled (or outlined, stroke=1) ellipse centred cx/cy with radii rx/ry */
-static inline void aster_ge_ellipse(aster_ge_t *g, int32_t cx, int32_t cy,
-				  uint32_t rx, uint32_t ry, uint16_t color,
-				  uint16_t stroke)
+static inline void aster_ge_ellipse(aster_ge_t *g, int32_t cx, int32_t cy, uint32_t rx, uint32_t ry,
+                                    uint16_t color, uint16_t stroke)
 {
 	aster_gfx_cmd_t *c = aster_ge_room(g);
 
@@ -330,13 +347,12 @@ static inline void aster_ge_ellipse(aster_ge_t *g, int32_t cx, int32_t cy,
 	c->w[2] = ASTER_GFX_PACK(rx, ry);
 	c->w[3] = ASTER_GFX_PACK(color, stroke);
 	aster_ge_touch(g, (uint32_t)(cx - (int32_t)rx > 0 ? cx - (int32_t)rx : 0),
-		     (uint32_t)(cy - (int32_t)ry > 0 ? cy - (int32_t)ry : 0),
-		     2u * rx + 1u, 2u * ry + 1u);
+	               (uint32_t)(cy - (int32_t)ry > 0 ? cy - (int32_t)ry : 0), 2u * rx + 1u,
+	               2u * ry + 1u);
 }
 
-static inline void aster_ge_tri(aster_ge_t *g, int32_t x0, int32_t y0, int32_t x1,
-			      int32_t y1, int32_t x2, int32_t y2,
-			      uint16_t color)
+static inline void aster_ge_tri(aster_ge_t *g, int32_t x0, int32_t y0, int32_t x1, int32_t y1,
+                                int32_t x2, int32_t y2, uint16_t color)
 {
 	int32_t mx, my, xx, yy;
 	aster_gfx_cmd_t *c = aster_ge_room(g);
@@ -354,12 +370,11 @@ static inline void aster_ge_tri(aster_ge_t *g, int32_t x0, int32_t y0, int32_t x
 	c->w[3] = ASTER_GFX_PACK((uint16_t)x2, (uint16_t)y2);
 	c->w[4] = color;
 	aster_ge_touch(g, (uint32_t)(mx > 0 ? mx : 0), (uint32_t)(my > 0 ? my : 0),
-		     (uint32_t)(xx - mx + 1), (uint32_t)(yy - my + 1));
+	               (uint32_t)(xx - mx + 1), (uint32_t)(yy - my + 1));
 }
 
-static inline void aster_ge_grad(aster_ge_t *g, int32_t x, int32_t y, uint32_t w,
-			       uint32_t h, uint16_t c0, uint16_t c1,
-			       uint16_t horizontal)
+static inline void aster_ge_grad(aster_ge_t *g, int32_t x, int32_t y, uint32_t w, uint32_t h,
+                                 uint16_t c0, uint16_t c1, uint16_t horizontal)
 {
 	aster_gfx_cmd_t *c = aster_ge_room(g);
 
@@ -372,12 +387,12 @@ static inline void aster_ge_grad(aster_ge_t *g, int32_t x, int32_t y, uint32_t w
 	c->w[3] = c0;
 	c->w[4] = c1;
 	c->w[5] = horizontal;
-	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y),
-		     w, h);
+	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y), w, h);
 }
 
 /* baseline text. bg != 0xFFFF paints an RGB565 backdrop behind glyphs. */
 #define ASTER_GFX_NOBG 0xFFFFu
+
 /*
  * Reservation order matters: reserve the slot AND the len payload bytes
  * together BEFORE copying anything, then write. The old shape copied the
@@ -386,9 +401,8 @@ static inline void aster_ge_grad(aster_ge_t *g, int32_t x, int32_t y, uint32_t w
  * TEXT could point at arena bytes that had already been flushed away -- and
  * the firmware silently drops such an out-of-range text reference, losing
  * the word with no error. */
-static inline int32_t aster_ge_text(aster_ge_t *g, int32_t x, int32_t baseline_y,
-				  uint32_t px, uint16_t fg, uint16_t bg,
-				  const char *utf8)
+static inline int32_t aster_ge_text(aster_ge_t *g, int32_t x, int32_t baseline_y, uint32_t px,
+                                    uint16_t fg, uint16_t bg, const char *utf8)
 {
 	if (!utf8) {
 		if (g->err == 0) {
@@ -398,10 +412,12 @@ static inline int32_t aster_ge_text(aster_ge_t *g, int32_t x, int32_t baseline_y
 	}
 	size_t length = strlen(utf8);
 	if (length > UINT16_MAX) {
-		if (!g->err) g->err = ASTER_EINVAL;
+		if (!g->err)
+			g->err = ASTER_EINVAL;
 		return g->err;
 	}
-	if (!length) return g->err;
+	if (!length)
+		return g->err;
 	uint32_t len = (uint32_t)length;
 	aster_gfx_cmd_t *c = aster_ge_reserve(g, len);
 
@@ -434,14 +450,13 @@ static inline int32_t aster_ge_text(aster_ge_t *g, int32_t x, int32_t baseline_y
 	int32_t asc = aster_text_asc(px);
 
 	aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x),
-		     (uint32_t)(baseline_y > asc ? baseline_y - asc : 0),
-		     (uint32_t)len * px, (uint32_t)aster_text_line_h(px));
+	               (uint32_t)(baseline_y > asc ? baseline_y - asc : 0), (uint32_t)len * px,
+	               (uint32_t)aster_text_line_h(px));
 	return 0;
 }
 
-static inline void aster_ge_bmp(aster_ge_t *g, uint32_t handle, uint32_t sw,
-			      uint32_t sh, int32_t x, int32_t y, uint16_t scale256,
-			      uint16_t alpha)
+static inline void aster_ge_bmp(aster_ge_t *g, uint32_t handle, uint32_t sw, uint32_t sh, int32_t x,
+                                int32_t y, uint16_t scale256, uint16_t alpha)
 {
 	aster_gfx_cmd_t *c = aster_ge_room(g);
 	uint32_t op = ASTER_GFX_BMP;
@@ -467,8 +482,7 @@ static inline void aster_ge_bmp(aster_ge_t *g, uint32_t handle, uint32_t sw,
 		uint32_t ww = scale256 ? (sw * scale256 / 256u) : sw;
 		uint32_t hh2 = scale256 ? (sh * scale256 / 256u) : sh;
 
-		aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y),
-			     ww, hh2);
+		aster_ge_touch(g, (uint32_t)(x < 0 ? 0 : x), (uint32_t)(y < 0 ? 0 : y), ww, hh2);
 	}
 }
 
@@ -484,14 +498,20 @@ static inline void aster_ge_bmp(aster_ge_t *g, uint32_t handle, uint32_t sw,
  * cannot be rolled back. Explicit begin_frame uses private host staging until END. */
 static inline int32_t aster_ge_present(aster_ge_t *g)
 {
- if(g->frame_id) {
-  int32_t r=g->err;
-  if(r>=0 && (g->n||g->dirty)) r=aster_ge_exec(g,0,0,0,0);
-  if(r<0) {aster_ge_cancel_frame(g);return r;}
-  r=aster_ge_frame_control(g,ASTER_GFX_FRAME_END);
-  g->frame_id=g->n=g->arena_used=0;g->dirty=false;g->err=0;
-  return r;
- }
+	if (g->frame_id) {
+		int32_t r = g->err;
+		if (r >= 0 && (g->n || g->dirty))
+			r = aster_ge_exec(g, 0, 0, 0, 0);
+		if (r < 0) {
+			aster_ge_cancel_frame(g);
+			return r;
+		}
+		r = aster_ge_frame_control(g, ASTER_GFX_FRAME_END);
+		g->frame_id = g->n = g->arena_used = 0;
+		g->dirty = false;
+		g->err = 0;
+		return r;
+	}
 
 	if (g->err < 0) {
 		int32_t error = g->err;
@@ -536,6 +556,7 @@ static inline int32_t aster_ge_present(aster_ge_t *g)
 /* Convenience ring storage for one 240x320 game surface. */
 #define ASTER_GE_RING_DEFAULT 96u
 #define ASTER_GE_ARENA_DEFAULT 768u
+
 static inline uint32_t aster_ge_default_ring(aster_gfx_cmd_t **ring, uint8_t **arena)
 {
 	static aster_gfx_cmd_t r[ASTER_GE_RING_DEFAULT];
@@ -554,10 +575,11 @@ static inline uint32_t aster_ge_default_ring(aster_gfx_cmd_t **ring, uint8_t **a
  * A no-command touch-only batch keeps the ordinary explicit present path. */
 static inline int32_t aster_ge_present_commands(aster_ge_t *g)
 {
- if(g->frame_id||g->err<0||!g->n) return aster_ge_present(g);
- int32_t r=aster_ge_exec(g,0,0,0,0);
- g->err=0;
- return r;
+	if (g->frame_id || g->err < 0 || !g->n)
+		return aster_ge_present(g);
+	int32_t r = aster_ge_exec(g, 0, 0, 0, 0);
+	g->err = 0;
+	return r;
 }
 
 #endif /* ASTER_GFX_ENGINE_H */

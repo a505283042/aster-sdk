@@ -3,19 +3,22 @@
 #include <stdio.h>
 #include "chess.h"
 
-static int square(const char *s) { return (int)('8' - s[1]) * 8 + s[0] - 'a'; }
+static int square(const char *s)
+{
+	return (int)('8' - s[1]) * 8 + s[0] - 'a';
+}
 
-static chess_move_t find_move(const chess_board_t *b, const char *from,
-			      const char *to, int promote)
+static chess_move_t find_move(const chess_board_t *b, const char *from, const char *to, int promote)
 {
 	chess_move_t moves[CHESS_MAX_MOVES];
 	int n = chess_legal_moves(b, moves, CHESS_MAX_MOVES);
 	for (int i = 0; i < n; i++) {
 		if (moves[i].from == square(from) && moves[i].to == square(to) &&
-		    moves[i].promote == promote) return moves[i];
+		    moves[i].promote == promote)
+			return moves[i];
 	}
 	assert(!"expected legal move");
-	return (chess_move_t){ 0, 0, 0 };
+	return (chess_move_t){0, 0, 0};
 }
 
 static void play(chess_board_t *b, const char *from, const char *to)
@@ -27,7 +30,8 @@ static void play(chess_board_t *b, const char *from, const char *to)
 
 static unsigned long perft(const chess_board_t *b, int depth)
 {
-	if (!depth) return 1;
+	if (!depth)
+		return 1;
 	chess_move_t moves[CHESS_MAX_MOVES];
 	int n = chess_legal_moves(b, moves, CHESS_MAX_MOVES);
 	assert(n <= CHESS_MAX_MOVES);
@@ -54,8 +58,10 @@ int main(void)
 
 	/* En passant captures the pawn behind the target and clears the flag. */
 	chess_reset(&b);
-	play(&b, "e2", "e4"); play(&b, "a7", "a6");
-	play(&b, "e4", "e5"); play(&b, "d7", "d5");
+	play(&b, "e2", "e4");
+	play(&b, "a7", "a6");
+	play(&b, "e4", "e5");
+	play(&b, "d7", "d5");
 	assert(b.ep == square("d6"));
 	play(&b, "e5", "d6");
 	assert(b.sq[square("d6")] == CHESS_PAWN);
@@ -63,7 +69,8 @@ int main(void)
 
 	/* Both sides can castle; crossing an attacked square is forbidden. */
 	chess_reset(&b);
-	for (int i = 0; i < 64; i++) b.sq[i] = 0;
+	for (int i = 0; i < 64; i++)
+		b.sq[i] = 0;
 	b.sq[square("e1")] = CHESS_KING;
 	b.sq[square("a1")] = b.sq[square("h1")] = CHESS_ROOK;
 	b.sq[square("e8")] = -CHESS_KING;
@@ -84,7 +91,8 @@ int main(void)
 
 	/* Promotion offers all four choices. */
 	chess_reset(&b);
-	for (int i = 0; i < 64; i++) b.sq[i] = 0;
+	for (int i = 0; i < 64; i++)
+		b.sq[i] = 0;
 	b.sq[square("e1")] = CHESS_KING;
 	b.sq[square("h8")] = -CHESS_KING;
 	b.sq[square("a7")] = CHESS_PAWN;
@@ -93,11 +101,14 @@ int main(void)
 
 	/* Fool's mate and a textbook stalemate. */
 	chess_reset(&b);
-	play(&b, "f2", "f3"); play(&b, "e7", "e5");
-	play(&b, "g2", "g4"); play(&b, "d8", "h4");
+	play(&b, "f2", "f3");
+	play(&b, "e7", "e5");
+	play(&b, "g2", "g4");
+	play(&b, "d8", "h4");
 	assert(chess_status(&b) == CHESS_CHECKMATE);
 	chess_reset(&b);
-	for (int i = 0; i < 64; i++) b.sq[i] = 0;
+	for (int i = 0; i < 64; i++)
+		b.sq[i] = 0;
 	b.sq[square("a8")] = -CHESS_KING;
 	b.sq[square("c6")] = CHESS_KING;
 	b.sq[square("b6")] = CHESS_QUEEN;

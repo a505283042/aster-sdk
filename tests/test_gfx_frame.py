@@ -1,7 +1,8 @@
-import subprocess,tempfile,unittest
+import subprocess, tempfile, unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]
-CODE=r'''
+
+ROOT = Path(__file__).resolve().parents[1]
+CODE = r'''
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -39,8 +40,32 @@ int main(void){
  return 0;
 }
 '''
+
+
 class FrameEngine(unittest.TestCase):
- def test_probe_spill_failure_cancel_and_recovery(self):
-  with tempfile.TemporaryDirectory() as d:
-   p=Path(d)/'test';r=subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-misleading-indentation','-I'+str(ROOT/'include'),'-I'+str(ROOT/'lib/aster'),'-x','c','-','-o',str(p)],input=CODE,text=True,capture_output=True)
-   self.assertEqual(r.returncode,0,r.stderr);subprocess.run([str(p)],check=True,timeout=10)
+    def test_probe_spill_failure_cancel_and_recovery(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'test'
+            r = subprocess.run(
+                [
+                    'cc',
+                    '-std=c11',
+                    '-Wall',
+                    '-Wextra',
+                    '-Werror',
+                    '-Wno-unused-function',
+                    '-Wno-misleading-indentation',
+                    '-I' + str(ROOT / 'include'),
+                    '-I' + str(ROOT / 'lib/aster'),
+                    '-x',
+                    'c',
+                    '-',
+                    '-o',
+                    str(p),
+                ],
+                input=CODE,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(r.returncode, 0, r.stderr)
+            subprocess.run([str(p)], check=True, timeout=10)
