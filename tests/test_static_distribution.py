@@ -1,5 +1,6 @@
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import sys
 import tempfile
@@ -151,6 +152,48 @@ class StaticDistribution(unittest.TestCase):
             digest, name = line.split('  ')
             self.assertEqual(setup.digest_file(self.output / name), digest)
         static.validate_export(self.output, 'owner/repo', 'test-1')
+
+    def test_media_catalog_requires_matching_board_abi_and_capability(self):
+        board = 'fakepod-s31'
+        src = self.setup / 'releases'
+        pointer = json.loads((self.setup / 'profiles/osptek-p4-st7102.json').read_bytes())
+        source = src / pointer['release']
+        template = json.loads((source / 'release.json').read_bytes())
+        profile = dict(template, board=board, screens=[[460, 460]])
+        raw = setup.encode(profile)
+        key = hashlib.sha256(raw).hexdigest()
+        shutil.copytree(source, src / key)
+        (src / key / 'release.json').write_bytes(raw)
+        (self.setup / 'profiles' / (board + '.json')).write_bytes(setup.encode({'release': key}))
+
+        old = self.store / 'releases' / self.ids[0]
+        app = dict(
+            json.loads((old / 'release.json').read_bytes()),
+            id='aster.hifi',
+            boards=[board],
+            screens=[[460, 460]],
+            abi_min=[4, 5, 0],
+            requires=['display', 'touch', 'media-player'],
+        )
+        raw = setup.encode(app)
+        release = hashlib.sha256(raw).hexdigest()
+        dest = old.parent / release
+        shutil.copytree(old, dest)
+        (dest / 'release.json').write_bytes(raw)
+        self.export(boards=[board, 'osptek-p4-st7102', 'aster.esp32s3.lckfb'])
+        basic = json.loads((self.output / f'catalog-{board}-riscv-0.json').read_bytes())
+        self.assertEqual(basic['items'], [])
+        self.assertEqual(basic['extended_abi'], 0x40500)
+        self.assertEqual(basic['extended_features'], (1 << 23) | 3)
+        full = json.loads((self.output / f'catalog-extended-{board}-riscv-0.json').read_bytes())
+        self.assertEqual([i['release'] for i in full['items']], [release])
+        for name in (
+            'catalog-osptek-p4-st7102-riscv-0.json',
+            'catalog-aster.esp32s3.lckfb-xtensa-0.json',
+        ):
+            other = json.loads((self.output / name).read_bytes())
+            self.assertNotIn('extended_abi', other)
+            self.assertNotIn('aster.hifi', [i['id'] for i in other['items']])
 
     def test_corrupt_payload_never_creates_output(self):
         (self.store / 'releases' / self.ids[0] / 'payload/0').write_bytes(b'bad')

@@ -84,9 +84,10 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
         raise ValueError('Output already exists; choose a new directory/tag')
     if not boards or any(not setup.IDENTIFIER.fullmatch(b) or '..' in b for b in boards):
         raise ValueError('An explicit board allowlist is required')
-    from aster_board import API
+    from aster_board import API, hardware
 
     bits = API['feature_bits']
+    devices = {info.get('board_id', name): info for name, info in hardware().items()}
     base, channel = source_urls(repository, tag, origin)
     sdk = Path(__file__).resolve().parents[1]
     records = []
@@ -168,18 +169,21 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     4095,
                 )
 
-            capabilities = json.loads((sdk / 'targets' / (target + '.json')).read_bytes())[
-                'capabilities'
-            ]
+            device = devices.get(board, {})
+            capabilities = (
+                device.get('capabilities')
+                or json.loads((sdk / 'targets' / (target + '.json')).read_bytes())['capabilities']
+            )
+            device_abi = setup.numeric_version(device['abi']) if 'abi' in device else abi
             features = sum({1 << bits[f] for f in capabilities})
-            newest = {}
+            newest, baseline = {}, {}
             for identity, app in records:
                 minimum = app['abi_min']
                 if (
                     board not in app['boards']
                     or app['target'] != target
                     or minimum[0] != abi[0]
-                    or tuple(minimum) > tuple(abi)
+                    or minimum > device_abi
                     or any(not features & (1 << bits[f]) for f in app['requires'])
                     or (
                         app['screens']
@@ -188,12 +192,19 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     )
                 ):
                     continue
-                if app['id'] not in newest or setup.numeric_version(
-                    app['version']
-                ) > setup.numeric_version(newest[app['id']][1]['version']):
-                    newest[app['id']] = (identity, app)
-            catalog = []
-            for identity, app in sorted(newest.values(), key=lambda value: value[1]['id']):
+                # Store <= 0.3.1 rejects an entire page for an unknown capability.
+                # Keep its device-specific update path usable on bootstrap firmware.
+                legacy = minimum <= abi and all(bits[f] <= 22 for f in app['requires'])
+                for view in (newest, baseline) if legacy else (newest,):
+                    prior = view.get(app['id'])
+                    if prior is None or setup.numeric_version(
+                        app['version']
+                    ) > setup.numeric_version(prior[1]['version']):
+                        view[app['id']] = (identity, app)
+            entries = {}
+            for identity, app in (*baseline.values(), *newest.values()):
+                if identity in entries:
+                    continue
                 common = {
                     k: app[k]
                     for k in ('id', 'version', 'boards', 'target', 'abi_min', 'requires', 'screens')
@@ -204,22 +215,20 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     raise ValueError('Invalid exported icon')
                 if art:
                     (dest / f'icon-{identity}.bmp').write_bytes(art)
-                catalog.append(
-                    {
-                        **common,
-                        'release': identity,
-                        'name': app['name'],
-                        'description': app['description'],
-                        'bytes': app['total_bytes'],
-                        'file_count': len(app['files']),
-                        'permissions': app['permissions'],
-                        'icon': (
-                            {'bytes': len(art), 'sha256': hashlib.sha256(art).hexdigest()}
-                            if art
-                            else None
-                        ),
-                    }
-                )
+                entries[identity] = {
+                    **common,
+                    'release': identity,
+                    'name': app['name'],
+                    'description': app['description'],
+                    'bytes': app['total_bytes'],
+                    'file_count': len(app['files']),
+                    'permissions': app['permissions'],
+                    'icon': (
+                        {'bytes': len(art), 'sha256': hashlib.sha256(art).hexdigest()}
+                        if art
+                        else None
+                    ),
+                }
                 if identity in exported:
                     continue
                 exported.add(identity)
@@ -254,18 +263,37 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                             'next': page + 1 if (page + 1) * 8 < len(app['files']) else -1,
                         },
                     )
-            for page in range(max(1, (len(catalog) + 7) // 8)):
-                document(
-                    f'catalog-{board}-{target}-{page}.json',
-                    {
-                        'schema': 1,
-                        'board': board,
-                        'target': target,
-                        'total': len(catalog),
-                        'items': catalog[page * 8 : (page + 1) * 8],
-                        'next': page + 1 if (page + 1) * 8 < len(catalog) else -1,
-                    },
-                )
+            extended = [
+                app
+                for name, (key, app) in newest.items()
+                if name not in baseline or baseline[name][0] != key
+            ]
+            selector = {}
+            views = [('', baseline)]
+            if extended:
+                major, minor, patch = max(app['abi_min'] for app in extended)
+                selector = {
+                    'extended_abi': major << 16 | minor << 8 | patch,
+                    'extended_features': sum(
+                        {1 << bits[f] for app in extended for f in app['requires']}
+                    ),
+                }
+                views.append(('extended-', newest))
+            for prefix, view in views:
+                catalog = [entries[view[name][0]] for name in sorted(view)]
+                for page in range(max(1, (len(catalog) + 7) // 8)):
+                    document(
+                        f'catalog-{prefix}{board}-{target}-{page}.json',
+                        {
+                            'schema': 1,
+                            'board': board,
+                            'target': target,
+                            'total': len(catalog),
+                            'items': catalog[page * 8 : (page + 1) * 8],
+                            'next': page + 1 if (page + 1) * 8 < len(catalog) else -1,
+                            **(selector if page == 0 and not prefix else {}),
+                        },
+                    )
         document(
             'aster-source.json',
             {'schema': 1, 'kind': 'aster-static-source', 'base_url': base},
