@@ -21,11 +21,16 @@
 #define ASTER_PLAYER_F_CONNECTED 1u
 #define ASTER_PLAYER_F_REMOTE 2u
 #define ASTER_PLAYER_F_BT_OUTPUT 4u
+/* In Bluetooth mode, path names a read-only JPEG in the shared music tree
+ * when COVER is set. reserved[2] identifies the current complete image. */
+#define ASTER_PLAYER_F_COVER 8u
+/* In Bluetooth receive mode, position_ms is a valid phone sample, including zero. */
+#define ASTER_PLAYER_F_POSITION 16u
 #define ASTER_PLAYER_PLAY_FILE 1u
 #define ASTER_PLAYER_PAUSE 2u
 #define ASTER_PLAYER_RESUME 3u
 #define ASTER_PLAYER_STOP 4u
-#define ASTER_PLAYER_SEEK 5u
+#define ASTER_PLAYER_SEEK 5u /* Local playback, including output to a Bluetooth speaker. */
 #define ASTER_PLAYER_BT_ON 6u
 #define ASTER_PLAYER_BT_OFF 7u
 #define ASTER_PLAYER_NEXT 8u
