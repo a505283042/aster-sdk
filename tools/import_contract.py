@@ -103,6 +103,12 @@ def platform_files(files, root):
             raise ValueError('firmware AOT profiles differ within CPU platform: ' + cpu)
         if profiles:
             target['aot_profile'] = profiles.pop()
+        # Verification belongs to the SDK compiler target, not to every board
+        # that uses it. Carry it forward only for the same compiler profile.
+        if (existing.get('status') == 'hardware-verified'
+                and all(existing.get(k) == target.get(k)
+                        for k in ('cpu', 'aot_target', 'aot_profile'))):
+            target['status'] = 'hardware-verified'
         result['targets/' + cpu + '.json'] = (json.dumps(target, indent=2) + '\n').encode()
         platforms += 1
     if not platforms:

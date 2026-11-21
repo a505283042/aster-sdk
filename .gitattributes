@@ -5,6 +5,7 @@ include/aster/*.h text eol=lf
 bin/aster text eol=lf
 *.sh text eol=lf
 targets/*.json text eol=lf
+hardware/*.json text eol=lf
 # Project templates use the same text bytes on Windows and Linux.
 templates/**/*.toml text eol=lf
 templates/**/*.c text eol=lf

@@ -2,7 +2,7 @@
 
 配套固件和桌面调试命令见 [开发包使用说明](使用说明.md)。P4 使用 `--target riscv`，lckfb 使用 `--target xtensa`。编译后通过串口部署，或用 `aster sim --profile p4 --app 工程目录` 在桌面调试；外部资源默认从安装包旁的 `resources` 导入，也可用 `--resources` 指定。串口包应通过工程的 `assets` 声明包含资源，不能仅传商城分离的主程序包。模拟器执行 WASM，设备执行匹配 CPU 的 AOT，分别验证行为与实机性能。
 
-适用版本：SDK ABI **4.5.0**（Hi-Fi 开发分支）；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4 RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。契约基线见 `contract/lock.json`。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
+适用版本：SDK ABI **4.5.0**；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4、ESP32-S31，RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。契约基线见 `contract/lock.json`。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
 
 本文是独立开发所需的完整参考：创建工程、配置、生命周期、绘图、输入、资源、设备接口、构建、部署及排错。本文中的类型和函数签名来自此版本 SDK 的公开契约。阅读本文即可编写 APP；不需要再读取固件代码、SDK 头文件、模板代码或工具实现。编译器会自动使用 SDK 自带的头文件和辅助库。
 
@@ -2560,6 +2560,8 @@ if(rc==0 && (info.capabilities&ASTER_PLAYER_CAP_BT_SINK))
 控制命令：SOURCE_ON=10 开启发送模式，BT_SCAN=11 搜索，BT_CONNECT=12 连接，BT_DISCONNECT=13 断开；使用现有 request 接口，BT_CONNECT 的 path 填完整蓝牙地址，其他命令 path 留空、value=0。BT_OFF 结束发送或接收模式；切换模式要先停止原源并等待完成。接收/发送互斥，搜索最多保存 8 个音频设备，使用快照中的地址连接，不用会变动的行号。
 
 PLAY_FILE 的 value 从本版起可选 0/1=有线、2=蓝牙输出；文件 path 仍经过原权限和沙箱检查。蓝牙需先连接且完成 SBC 协商。服务在音频线程将文件源 PCM 转为当前内置 SBC 发送器支持的 44.1 kHz 双声道 16 位：不同采样率使用 32-tap、64 相位窗化 sinc 低通滤波器，等采样率仅做位深转换。系统音量为软件衰减。该路径经 SBC 编码为有损音频，不表示有线原位深路径或无损蓝牙。
+
+支持 `ASTER_PLAYER_CAP_SYSTEM_OUTPUT` 的固件还接受 `ASTER_PLAYER_OUTPUT_SYSTEM`（3）。此模式跟随系统选择的输出，播放途中连接蓝牙音箱会从当前进度继续，暂停时连接则在恢复播放时切换。显式指定 1 或 2 时输出固定。应用可检测能力位，在旧固件上沿用原来的输出选择。
 
 本地文件播放时 info.rate/bits 仍是源格式；info.flags 的 BT_OUTPUT=4 表示这首音乐选择了蓝牙输出。蓝牙协商输出采样率从设备列表快照的 output_rate 获取（未就绪为 0），queued_bytes 是待编码 PCM 缓冲字节，不是远端播放进度。首版不提供发送模式的耳机按键遥控或 AAC。
 

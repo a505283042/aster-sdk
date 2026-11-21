@@ -9,6 +9,7 @@
 #define ASTER_PLAYER_CAP_REMOTE 8u
 #define ASTER_PLAYER_CAP_BT_SOURCE 16u
 #define ASTER_PLAYER_CAP_SPECTRUM 32u
+#define ASTER_PLAYER_CAP_SYSTEM_OUTPUT 64u /* PLAY_FILE can follow the system speaker selection. */
 #define ASTER_PLAYER_LOCAL 1u
 #define ASTER_PLAYER_BLUETOOTH 2u
 #define ASTER_PLAYER_IDLE 0u
@@ -41,6 +42,7 @@
 #define ASTER_PLAYER_BT_DISCONNECT 13u
 #define ASTER_PLAYER_OUTPUT_WIRED 1u
 #define ASTER_PLAYER_OUTPUT_BLUETOOTH 2u
+#define ASTER_PLAYER_OUTPUT_SYSTEM 3u /* Requires ASTER_PLAYER_CAP_SYSTEM_OUTPUT. */
 
 typedef struct {
     uint32_t size, version, capabilities, mode, state, flags;

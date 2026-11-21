@@ -46,6 +46,16 @@ class PlatformImport(unittest.TestCase):
             self.assertNotIn('targets/s31.json', result)
             self.assertEqual(json.loads(result['hardware/p4.json'])['id'], 'p4')
             self.assertEqual(json.loads(result['hardware/s31.json'])['id'], 's31')
+            (root / 'targets').mkdir()
+            target['status'] = 'hardware-verified'
+            path = root / 'targets/riscv.json'
+            path.write_text(json.dumps(target))
+            refreshed = json.loads(platform_files(files, root)['targets/riscv.json'])
+            self.assertEqual(refreshed['status'], 'hardware-verified')
+            target['aot_profile'] = 'previous-profile'
+            path.write_text(json.dumps(target))
+            refreshed = json.loads(platform_files(files, root)['targets/riscv.json'])
+            self.assertEqual(refreshed['status'], 'build-supported')
             bad = json.loads(files['targets/s31.json'])
             bad['aot_profile'] = 'different-profile'
             files['targets/s31.json'] = json.dumps(bad).encode()

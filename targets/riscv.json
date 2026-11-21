@@ -39,7 +39,7 @@
     "data_glob": "/dev/ttyACM*",
     "package_dir": "/SD:"
   },
-  "status": "build-supported",
+  "status": "hardware-verified",
   "name": "Riscv",
   "aot_profile": "rv32-ilp32f-interruptible"
 }
