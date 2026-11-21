@@ -1,6 +1,8 @@
 """Compatibility rules shared by build, package verification and deployment."""
 import re
 
+import aster_board
+
 
 def version(value):
     if not isinstance(value, str) or not re.fullmatch(r"\d+\.\d+(?:\.\d+)?", value):
@@ -9,7 +11,22 @@ def version(value):
     return parts + (0,) * (3 - len(parts))
 
 
+def validate_supported_boards(boards):
+    if not isinstance(boards, list) or len(boards) > 8:
+        raise ValueError("supported_boards must be a list of up to 8 device board IDs")
+    for board in boards:
+        if not isinstance(board, str) or not re.fullmatch(r"[a-zA-Z0-9_.-]{1,39}", board):
+            raise ValueError("invalid device board ID in supported_boards: " + repr(board))
+
+
 def validate_manifest(manifest, target):
+    validate_supported_boards(manifest.get("supported_boards", []))
+    requires = manifest.get("requires", [])
+    if not isinstance(requires, list) or len(requires) > 8:
+        raise ValueError("requires must be a list of up to 8 capability names")
+    for name in requires:
+        if not isinstance(name, str) or name not in aster_board.API["feature_bits"]:
+            raise ValueError("unknown required capability: " + repr(name))
     app_id = manifest.get("id", "")
     if not isinstance(app_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,62}", app_id) or ".." in app_id:
         raise ValueError("invalid application identifier")
@@ -22,9 +39,6 @@ def validate_manifest(manifest, target):
     device = version(target["abi"])
     if minimum[0] != device[0] or built[0] != device[0] or minimum > device or minimum > built:
         raise ValueError("incompatible application/device ABI")
-    missing = set(manifest.get("requires", [])) - set(target["capabilities"])
-    if missing:
-        raise ValueError("target lacks required capabilities: " + ", ".join(sorted(missing)))
     memory = manifest.get("memory", {})
     initial, maximum, stack = (int(memory.get(k, 0)) for k in ("initial", "max", "stack"))
     # Alignment only. Each board's firmware config is the memory ceiling;
@@ -60,7 +74,6 @@ def validate_device(pong, target, requires=()):
     if fields.get("sd") != "1":
         raise ValueError("device storage is not mounted")
 
-    import aster_board
     bits = aster_board.API["feature_bits"]
     if requires:
         try:

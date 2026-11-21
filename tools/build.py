@@ -34,7 +34,7 @@ The app declares itself in app.toml:
   stack    = 16384              # optional: wasm shadow stack bytes
   initial_memory = 262144       # optional: wasm linear memory bytes
   max_memory     = 524288       # optional
-  requires   = ["display"]      # optional: hard capability deps (install fails if absent)
+  requires   = ["display"]      # optional: hard capability deps checked at launch
   permissions = ["fs"]          # optional: enforced since ABI 1.2 (fs/kv/appmgr/sd)
   sources = ["src/main.c"]      # optional: defaults to every .c under src/
 """
@@ -93,11 +93,7 @@ LIFECYCLE_EXPORTS = [
     "aster_app_event",
 ]
 
-VALID_CAPS = {
-    "display", "touch", "mouse", "keyboard", "camera", "audio-in", "audio-out", "audio-stream", "audio-effects", "audio-effects-memory", "media-player",
-    "wifi", "bluetooth", "accelerometer", "gyroscope", "filesystem", "storage.app",
-    "rtc", "psram", "framebuffer", "network", "http", "tls", "mqtt", "websocket",
-}
+VALID_CAPS = frozenset(aster_board.API["feature_bits"])
 VALID_CATEGORIES = {"game", "tool", "system"}
 # The spellings live in aster_board.ORIENTATIONS -- one copy, shared with
 # verify_ast.py (which cannot import this file: tomllib needs 3.11, and the
@@ -261,6 +257,9 @@ class App:
         self.max_memory: int = int(a.get("max_memory", 0) or 0)
         self.heap: int = int(a.get("heap", 0) or 0)
         self.requires: list[str] = list(a.get("requires", []))
+        from target_checks import validate_supported_boards
+        self.supported_boards = a.get("supported_boards", [])
+        validate_supported_boards(self.supported_boards)
         self.optional: list[str] = list(a.get("optional", []))
         self.permissions: list[str] = list(a.get("permissions", []))
         self.entry: str = a.get("entry", "")
@@ -499,6 +498,8 @@ def make_manifest(app: App) -> dict:
         m["memory"]["heap"] = app.heap
     if app.entry:
         m["entry"] = app.entry
+    if app.supported_boards:
+        m["supported_boards"] = app.supported_boards
     if app.requires:
         m["requires"] = app.requires
     if app.optional:
@@ -601,7 +602,7 @@ def main(argv=None) -> int:
     ap.add_argument("--target", dest="board", default=None,
                     help="platform target (see targets/); supplies the default "
                          "--aot-target")
-    ap.add_argument("--hardware", default=None, help="physical board descriptor from hardware/; independent of CPU target")
+    ap.add_argument("--hardware", default=None, help="optional bundled board alias for the CPU target and output folder")
     ap.add_argument("--aot-target", default=None,
                     help="wamrc backend (" + "|".join(sorted(aster_board.AOT_BACKENDS)) +
                          "; default: the platform aot_target)")
@@ -636,13 +637,16 @@ def main(argv=None) -> int:
     if not targets:
         ap.error("no apps given (use paths or --all)")
 
+    compiler_target = aster_board.get(target["id"]) if args.hardware else target
     results = []
     for t in targets:
         d = t if t.is_dir() else Path.cwd() / t
         app = App(d.resolve())
         from target_checks import validate_app
-        validate_app(app, target)
-        app.target = target
+        # --hardware is a convenience for selecting an architecture and output folder.
+        # Runtime capabilities belong to the device that launches the installed app.
+        validate_app(app, compiler_target)
+        app.target = compiler_target
         want_aot = app.aot
         if args.aot:
             want_aot = True

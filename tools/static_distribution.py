@@ -39,6 +39,9 @@ def validate_package(path, app):
     for name in ('id', 'version', 'requires', 'permissions'):
         if manifest.get(name, []) != app[name]:
             raise ValueError('Market metadata differs from package: ' + name)
+    declared = set(manifest.get('supported_boards', []))
+    if declared and (not app['boards'] or not set(app['boards']).issubset(declared)):
+        raise ValueError('Market audience exceeds package supported_boards')
 
 
 def load_release(root, key):
@@ -120,10 +123,12 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     raise ValueError('Payload changed while exporting')
 
         exported = set()
+        profiles = {}
         for board in sorted(set(boards)):
             pointer = json.loads((setup_data / 'profiles' / (board + '.json')).read_bytes())
             key = pointer['release']
-            info = load_release(setup_data, key)
+            profiles[board] = (key, load_release(setup_data, key))
+        for board, (key, info) in profiles.items():
             target = info['target']
             if (
                 info['board'] != board
@@ -131,7 +136,7 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                 or len(info['screens']) != 1
             ):
                 raise ValueError('A static profile must bind one board/CPU/display')
-            required = sum(1 << bits[f] for f in set(info['store_requires']) | {'tls'})
+            required = sum({1 << bits[f] for f in [*info['store_requires'], 'tls']})
             abi = info['abi_min']
             packed = abi[0] << 16 | abi[1] << 8 | abi[2]
             w, h = info['screens'][0]
@@ -169,18 +174,16 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     4095,
                 )
 
-            device = devices.get(board, {})
-            capabilities = (
-                device.get('capabilities')
-                or json.loads((sdk / 'targets' / (target + '.json')).read_bytes())['capabilities']
-            )
-            device_abi = setup.numeric_version(device['abi']) if 'abi' in device else abi
+            device = devices.get(board)
+            descriptor = device or json.loads((sdk / 'targets' / (target + '.json')).read_bytes())
+            capabilities = descriptor['capabilities']
+            device_abi = setup.numeric_version(descriptor['abi'])
             features = sum({1 << bits[f] for f in capabilities})
             newest, baseline = {}, {}
             for identity, app in records:
                 minimum = app['abi_min']
                 if (
-                    board not in app['boards']
+                    (app['boards'] and board not in app['boards'])
                     or app['target'] != target
                     or minimum[0] != abi[0]
                     or minimum > device_abi
@@ -194,7 +197,12 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     continue
                 # Store <= 0.3.1 rejects an entire page for an unknown capability.
                 # Keep its device-specific update path usable on bootstrap firmware.
-                legacy = minimum <= abi and all(bits[f] <= 22 for f in app['requires'])
+                # For an unregistered board the setup profile only proves its
+                # bootstrap requirements. The device checks the extended selector.
+                legacy = minimum <= abi and all(
+                    bits[f] <= 22 and (device is not None or required & (1 << bits[f]))
+                    for f in app['requires']
+                )
                 for view in (newest, baseline) if legacy else (newest,):
                     prior = view.get(app['id'])
                     if prior is None or setup.numeric_version(
@@ -209,6 +217,12 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     k: app[k]
                     for k in ('id', 'version', 'boards', 'target', 'abi_min', 'requires', 'screens')
                 }
+                if not common['boards']:
+                    common['boards'] = [b for b, (_, p) in profiles.items() if p['target'] == target]
+                note = store_data / 'verification' / (identity + '.json')
+                tested = json.loads(note.read_bytes()) if note.is_file() else []
+                if not isinstance(tested, list) or any(not isinstance(b, str) for b in tested):
+                    raise ValueError('Invalid board verification record')
                 icon = store_data / 'icons' / (identity + '.bmp')
                 art = icon.read_bytes() if icon.is_file() else None
                 if art and (len(art) > 8192 or not art.startswith(b'BM')):
@@ -219,6 +233,7 @@ def export(setup_data, store_data, output, repository, tag, boards, notices=None
                     **common,
                     'release': identity,
                     'name': app['name'],
+                    'verified': int(board in tested),
                     'description': app['description'],
                     'bytes': app['total_bytes'],
                     'file_count': len(app['files']),

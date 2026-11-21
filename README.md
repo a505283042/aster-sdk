@@ -1,6 +1,6 @@
 # Aster SDK
 
-应用开发仓库。代码包含 `<aster/aster.h>`，通过 `aster_*` 调用设备功能。当前 ABI 为 4.5.0，CPU 目标为 `xtensa`（ESP32-S3）和 `riscv`（ESP32-P4）。3.x 包需要用本 SDK 重新编译后再安装。
+应用开发仓库。代码包含 `<aster/aster.h>`，通过 `aster_*` 调用设备功能。当前 ABI 为 4.5.0，CPU 目标为 `xtensa`（ESP32-S3）和 `riscv`（ESP32-P4、ESP32-S31）。3.x 包需要用本 SDK 重新编译后再安装。
 
 网络代码继续调用 `aster_network_*`、`aster_http_*`、`aster_mqtt_*`、`aster_ws_*`。这些函数在 `lib/aster/aster_netlib.c` 里转到六个导入：`aster_net_info`、`aster_net_open`、`aster_net_io`、`aster_net_status`、`aster_net_cancel`、`aster_net_close`。应用 manifest 的 `abi_min` 设为 `4.0`。
 
@@ -9,25 +9,9 @@
 首次开机的字体和商城资源可由 SDK 本地服务提供，参见 [初始化资源服务器](docs/setup-server.md)。
 免服务器发布见 [GitHub 静态分发](docs/github-distribution.md)，包含自动编译、发布及设备源配置。
 
-## 实验性 ESP32-P4 目标
+## 选择 APP 架构
 
-源码分支新增 `--target riscv`，供配套 ESP-IDF P4 固件使用，状态为
-`experimental-unverified`（尚未完成整板验收）。2026-10-31 已在配套 P4 v3.2
-固件上验证 Hello 和 2048 的 RISC-V AOT 执行，以及 2048 的显示、滑动、暂停/恢复
-和停止。其余功能仍需验收，现有 Windows 发布包不因此获得 P4 支持。
-默认稳定目标仍为 `xtensa`。
-
-```bash
-python tools/build.py apps/hello --target riscv --aot
-```
-
-此配置使用 RV32 ILP32F、M/A/F/C、软件内存/栈边界检查，并为 AOT 编译副本准备
-有上限的共享内存，以生成 WAMR 循环终止检查。原 portable WASM 不变。
-包输出到 `dist/riscv/`，目前通过 SD 卡和固件的 `aster app install` 安装；
-该端口尚未提供 USB ASTERFS 上传。需要包含 RISC-V 后端的 `wamrc`。
-
-P4 固件的 AOT 配置使用内部可执行 SRAM、关闭 IDF IDRAM 内存保护，并在加载前失败时
-回退解释器。AOT 输入须来自受信任的编译来源；具体硬件和能力限制以固件板级说明为准。
+立创 ESP32-S3 实战派使用 `xtensa`，鱼鹰光电 P4C5 和 FAKE POD NANO PRO 使用 `riscv`。同一工程按需为每个架构构建 AOT 包。日常执行 `aster build` 即可使用项目的 `[sdk].target`。相同架构和 AOT 配置的新板可以直接使用架构包。设备每次启动 APP 时检查所需能力，已有脚本可继续用 `--hardware` 作为已知板型的架构简称。专用 APP 可在 `[app].supported_boards` 列出允许启动的板型 ID，用 `aster verify 文件.ast` 查看。命令及产物路径见[开发包使用说明](docs/使用说明.md)。
 
 ## 安装
 

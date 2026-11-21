@@ -14,7 +14,7 @@ def main(argv=None):
         return 0
     if not argv or argv[0] in ("-h", "--help"):
         print("usage: aster-toolchain.exe build <app-dir> --target xtensa [--aot|--no-aot]")
-        print("       aster-toolchain.exe verify <package.ast> --target xtensa")
+        print("       aster-toolchain.exe verify <package.ast> [--target xtensa]")
         return 0
     command = argv.pop(0)
     if command == "build":
@@ -27,7 +27,7 @@ def main(argv=None):
         from verify_ast import check
         parser = argparse.ArgumentParser(prog="aster-toolchain verify")
         parser.add_argument("package", type=Path)
-        parser.add_argument("--target", required=True)
+        parser.add_argument("--target")
         parser.add_argument("--pubkey", type=Path)
         args = parser.parse_args(argv)
         check(args.package, pub_pem=args.pubkey, board=args.target)

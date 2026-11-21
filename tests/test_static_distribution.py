@@ -32,7 +32,7 @@ class StaticDistribution(unittest.TestCase):
         manifest = {
             'version': '0.2.0',
             'abi': {'min': '4.3'},
-            'requires': ['display', 'touch', 'filesystem', 'http'],
+            'requires': ['display', 'touch', 'filesystem', 'storage.app', 'http'],
         }
         self.setup = self.root / 'setup'
         self.store = self.root / 'store'
@@ -126,6 +126,9 @@ class StaticDistribution(unittest.TestCase):
                 static.source_urls('owner/repo', 'test-1', origin)
 
     def test_profiles_catalogs_pin_release_and_deduplicate(self):
+        checks = self.store / 'verification'
+        checks.mkdir()
+        (checks / (self.ids[0] + '.json')).write_bytes(setup.encode(['osptek-p4-st7102']))
         channel = self.export()
         self.assertTrue(channel.endswith('/latest/download/aster-source.json'))
         source = json.loads((self.output / 'aster-source.json').read_bytes())
@@ -133,6 +136,8 @@ class StaticDistribution(unittest.TestCase):
             source['base_url'], 'https://github.com/owner/repo/releases/download/test-1'
         )
         for board, target in [('osptek-p4-st7102', 'riscv'), ('aster.esp32s3.lckfb', 'xtensa')]:
+            catalog = json.loads((self.output / f'catalog-{board}-{target}-0.json').read_bytes())
+            self.assertEqual(catalog['items'][0]['verified'], int(target == 'riscv'))
             plan = json.loads((self.output / f'setup-{board}-{target}.json').read_bytes())
             self.assertEqual(plan['schema'], 2)
             self.assertEqual(plan['market_url'], channel)
@@ -170,7 +175,7 @@ class StaticDistribution(unittest.TestCase):
         app = dict(
             json.loads((old / 'release.json').read_bytes()),
             id='aster.hifi',
-            boards=[board],
+            boards=[],
             screens=[[460, 460]],
             abi_min=[4, 5, 0],
             requires=['display', 'touch', 'media-player'],
@@ -194,6 +199,32 @@ class StaticDistribution(unittest.TestCase):
             other = json.loads((self.output / name).read_bytes())
             self.assertNotIn('extended_abi', other)
             self.assertNotIn('aster.hifi', [i['id'] for i in other['items']])
+
+    def test_new_board_can_offer_capability_gated_generic_app_without_sdk_profile(self):
+        board = 'new-prototype'
+        pointer = json.loads((self.setup / 'profiles/osptek-p4-st7102.json').read_bytes())
+        original = self.setup / 'releases' / pointer['release']
+        profile = dict(json.loads((original / 'release.json').read_bytes()), board=board)
+        raw = setup.encode(profile)
+        key = hashlib.sha256(raw).hexdigest()
+        shutil.copytree(original, original.parent / key)
+        (original.parent / key / 'release.json').write_bytes(raw)
+        (self.setup / 'profiles' / (board + '.json')).write_bytes(setup.encode({'release': key}))
+
+        original = self.store / 'releases' / self.ids[0]
+        app = dict(json.loads((original / 'release.json').read_bytes()),
+                   boards=[], abi_min=[4, 5, 0], requires=['media-player'])
+        raw = setup.encode(app)
+        key = hashlib.sha256(raw).hexdigest()
+        shutil.copytree(original, original.parent / key)
+        (original.parent / key / 'release.json').write_bytes(raw)
+        self.export(boards=[board])
+        base = json.loads((self.output / f'catalog-{board}-riscv-0.json').read_bytes())
+        self.assertEqual(base['items'], [])
+        self.assertEqual(base['extended_features'], 1 << 23)
+        full = json.loads((self.output / f'catalog-extended-{board}-riscv-0.json').read_bytes())
+        self.assertEqual(full['items'][0]['boards'], [board])
+        self.assertEqual(full['items'][0]['verified'], 0)
 
     def test_corrupt_payload_never_creates_output(self):
         (self.store / 'releases' / self.ids[0] / 'payload/0').write_bytes(b'bad')

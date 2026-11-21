@@ -150,7 +150,6 @@ def allowed_env_imports():
 def check(path, pub_pem=None, board=None):
     if not __debug__:
         raise RuntimeError("Package verification requires Python without -O")
-    target = aster_board.get(board)
     b = Path(path).read_bytes()
     assert b[0:4] == b"ASTP", "magic"
     fmt_ver, hdr_size = struct.unpack_from("<HH", b, 4)
@@ -188,6 +187,8 @@ def check(path, pub_pem=None, board=None):
         assert n_assets <= 64, "too many assets"
 
     man = json.loads(b[mo:mo + ml].decode("utf-8"))
+    board = board or man.get("target_id")
+    target = aster_board.get(board)
     for k in ("id", "name", "abi"):
         assert k in man, f"manifest.{k}"
     if "description" in man:
@@ -250,6 +251,8 @@ def check(path, pub_pem=None, board=None):
     print(f"OK  {path}")
     print(f"    id={man['id']} name={man['name']} ver={man.get('version')} "
           f"abi={man['abi']} requires={man.get('requires', [])}")
+    boards = ", ".join(man.get("supported_boards", [])) or "(any compatible board)"
+    print(f"    target={target['id']} supported_boards={boards}")
     print(f"    manifest={ml}B wasm={wl}B aot={al}B(target {at}) icon={il}B "
           f"assets={asl}B({n_assets} files) hdr={hdr_size} total={len(b)}B")
     print(f"    imports: {n_aster} aster_* + {n_libc} libc-builtin (all resolvable), "

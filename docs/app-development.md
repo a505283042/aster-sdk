@@ -1,6 +1,6 @@
 # Aster APP SDK 开发手册（AI 可直接使用）
 
-配套固件和桌面调试命令见 [开发包使用说明](使用说明.md)。P4 使用 `--target riscv`，lckfb 使用 `--target xtensa`。编译后通过串口部署，或用 `aster sim --profile p4 --app 工程目录` 在桌面调试；外部资源默认从安装包旁的 `resources` 导入，也可用 `--resources` 指定。串口包应通过工程的 `assets` 声明包含资源，不能仅传商城分离的主程序包。模拟器执行 WASM，设备执行匹配 CPU 的 AOT，分别验证行为与实机性能。
+日常开发按 CPU 架构创建工程，例如 `aster init my-app --template hello --id com.example.hello --target riscv`，之后执行 `aster build my-app`。在立创 ESP32-S3 实战派上选 `xtensa`，在鱼鹰光电 P4C5 和 FAKE POD NANO PRO 上选 `riscv`。可通过串口部署，或用 `aster sim --profile osptek-p4 --app 工程目录` 在桌面调试。模拟器执行 WASM，实机执行对应架构的 AOT。串口安装使用包含 `assets` 资源的包，模拟器也可用 `--resources` 导入外部资源。详见[开发包使用说明](使用说明.md)。
 
 适用版本：SDK ABI **4.5.0**；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4、ESP32-S31，RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。契约基线见 `contract/lock.json`。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
 
@@ -28,7 +28,7 @@
 
 ## 1. 给 AI 的开发约定
 
-接到需求后，先确定 SDK 所在绝对路径、工程输出目录、APP ID、交互和资源需求。目标未指定时使用 `xtensa`，APP ID 使用 `com.example.<英文名称>`；用户已有工程时保留其 ID 和业务代码。SDK 路径无法从工作环境确定时只询问路径，不要求用户查代码。
+接到需求后，先确定 SDK 所在绝对路径、工程输出目录、APP ID、交互和资源需求。已有工程沿用 `[sdk].target`，新工程未指定目标时使用 `xtensa`，APP ID 使用 `com.example.<英文名称>`；用户已有工程时保留其 ID 和业务代码。SDK 路径无法从工作环境确定时只询问路径，不要求用户查代码。
 
 开发顺序：
 
@@ -138,7 +138,8 @@ my-counter/
 - `initial_memory`：WASM 初始线性内存字节，默认 262144。
 - `max_memory`：可选，WASM 最大线性内存字节；未填不显式设置链接器最大值。初始值和最大值按 65536 字节页对齐，最大值不小于初始值。
 - `heap`：可选，运行时 APP 堆预算字节，供运行时分配表面等对象；省略/0 时当前固件使用 262144。它不代表 SDK 提供了标准 `malloc/free` 的开发约定。
-- `requires`：必需能力字符串数组，缺失时构建/安装可能被拒绝。默认空。
+- `requires`：必需能力字符串数组，固件在启动前核对本机能力。默认空。
+- `supported_boards`：可选的实机板型 ID 数组。缺省或 `[]` 允许所有架构、ABI 和必需能力相符的设备。专用 APP 可填写 `supported_boards = ["fakepod-s31"]`。多块板用同一个数组列出，设备只需匹配其中一个 ID。ID 取自设备串口探测回报的 `board`（例如 `aster probe --target riscv --port COM11`），至多 8 项，每项 1–39 个 ASCII 字母、数字、点、横线或下划线，区分大小写。SDK 不查询板名目录。
 - `optional`：可选能力字符串数组，代码必须检测并降级。默认空。
 - `permissions`：权限字符串数组，默认空，具体规则如下。
 - `sources`：可选，工程相对路径数组；省略时扫描 `src/**/*.c`。
@@ -146,7 +147,7 @@ my-counter/
 - `icon`：可选，工程内 ASTI 格式图标的相对路径，例如 `"icon.bin"`；不能直接填 PNG。
 - `entry`：可选包元数据。普通 C APP 不设置，生命周期函数仍使用固定名称。
 
-支持 `media-player` 可选系统播放器能力（ABI 4.4，具体接口见文末）。其他支持的能力名称（精确拼写）：`display`、`touch`、`mouse`、`keyboard`、`camera`、`audio-in`、`audio-out`、`wifi`、`bluetooth`、`accelerometer`、`gyroscope`、`filesystem`、`storage.app`、`rtc`、`psram`、`framebuffer`、`network`、`http`、`tls`。名字被接受不代表当前这块板具备该能力。打包只要求 `target_id` 等于平台名 `xtensa`。加速度计、屏幕尺寸等差异在设备上用 `aster_system_has_feature` 和 `aster_display_get_info` 判断，安装不会因为这些板级能力拒绝包。
+支持 `media-player` 可选系统播放器能力（ABI 4.4，具体接口见文末）。其他支持的能力名称（精确拼写）：`display`、`touch`、`mouse`、`keyboard`、`camera`、`audio-in`、`audio-out`、`wifi`、`bluetooth`、`accelerometer`、`gyroscope`、`filesystem`、`storage.app`、`rtc`、`psram`、`framebuffer`、`network`、`http`、`tls`。通用包的 `target_id` 为 `xtensa` 或 `riscv`。固件启动 APP 前按实际能力检查 `requires`。用 `aster_system_has_feature` 查询可选功能，用 `aster_display_get_info` 获取运行时尺寸。
 
 支持的权限名称只有：
 
@@ -2613,8 +2614,21 @@ if(rc==0){
 进度操作：SEEK 在 PLAYING/PAUSED 会话中异步定位；原文件已自然播放结束（ENDED）时，从保留的系统文件与输出端点重新打开并定位。不会先播放开头再提交第二次 seek。显式停止或 ERROR 不自动重试；文件可能已删除，重新打开失败时从 info.error 获取错误。
 
 
-### 具体开发板与编译架构
+### 按架构构建
 
-物理板型在 `hardware/`，CPU 编译目标在 `targets/`。鱼鹰光电 P4C5（480×480）使用 `osptek-p4`，立创 ESP32-S3 实战派使用 `lckfb-s3`，FAKE POD NANO PRO 使用 `fakepod-s31`。不能仅凭芯片名推断屏幕、音频、电池或唤醒能力。
-`aster build 工程 --hardware osptek-p4 --aot` 自动选取 `riscv`，并按该板能力和内存校验；产物为 `dist/riscv/osptek-p4/应用ID.ast`。
-不指定 `--hardware` 时仍按 `--target` 构建通用架构包。APP 需要查询运行时显示信息和可选能力，硬件选择不替代这些检查。
+`aster build` 读取工程的 `[sdk].target`。发布两个架构时，从同一工程分别执行 `aster build --target xtensa` 和 `aster build --target riscv`，产物分别位于 `dist/xtensa/` 和 `dist/riscv/`。同架构设备要共用 AOT 包，还需 AOT 配置兼容、固件提供所需 ABI 和能力，并有足够内存。
+
+`--hardware` 兼容已有脚本使用的板名简称。`aster build --hardware fakepod-s31` 会选择 `riscv`，结果写入 `dist/riscv/fakepod-s31/应用ID.ast`。新增相同架构和 AOT 配置的板，只需用现有 `--target`，无需修改 SDK 或读取固件仓库。
+
+例如 `requires = ["media-player"]` 的应用可编译为通用 RISC-V 包。FAKE POD NANO PRO 提供该服务时允许打开；鱼鹰光电 P4C5 缺少该服务时会拒绝启动。仅用于增强体验的功能写入 `optional`，由 APP 在运行时决定是否显示相应控件。
+
+用 `aster verify 文件.ast` 可以离线查看安装包的架构、`supported_boards` 和 `requires`。例如专用播放器可在 `[app]` 写入：
+
+```toml
+supported_boards = ["fakepod-s31"]
+requires = ["display", "touch", "media-player"]
+```
+
+新版固件在每次启动前按自身 `board` 标识和实际能力放行。旧包缺少 `supported_boards` 时继续按架构和能力运行；引入此字段之前的固件会忽略板型限制。
+
+商城读取安装包的同一份声明。发布配置中的 `boards` 可缩小分发范围。详情页按当前版本显示本机型的实测记录。

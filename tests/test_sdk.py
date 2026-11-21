@@ -33,9 +33,17 @@ class Compatibility(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "target"):
             validate_manifest(self.manifest, dict(self.target, id="different-hardware"))
 
-    def test_missing_capability(self):
-        with self.assertRaisesRegex(ValueError, "display"):
-            validate_manifest(self.manifest, dict(self.target, capabilities=[]))
+    def test_supported_boards_does_not_require_an_sdk_board_descriptor(self):
+        for ids in ([], ["my.new-board", "aster.esp32s3.lckfb"]):
+            validate_manifest(dict(self.manifest, supported_boards=ids), self.target)
+        for invalid in (None, "fakepod-s31", [""], ["x" * 40], ["invalid/id"], ["a"] * 9):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                validate_manifest(dict(self.manifest, supported_boards=invalid), self.target)
+
+    def test_firmware_decides_capability_availability(self):
+        validate_manifest(self.manifest, dict(self.target, capabilities=[]))
+        with self.assertRaisesRegex(ValueError, "unknown required capability"):
+            validate_manifest(dict(self.manifest, requires=["typo"]), self.target)
 
     def test_incompatible_abi(self):
         major, minor = map(int, self.target["abi"].split(".")[:2])

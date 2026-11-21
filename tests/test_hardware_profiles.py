@@ -11,7 +11,7 @@ from target_checks import validate_manifest
 class HardwareProfiles(unittest.TestCase):
     def test_board_identity_and_cpu_are_separate(self):
         boards=aster_board.hardware()
-        self.assertEqual(set(boards),{'osptek-p4','lckfb-s3','fakepod-s31','waveshare-35b'})
+        self.assertTrue({'osptek-p4','lckfb-s3','fakepod-s31','waveshare-35b'}.issubset(boards))
         for name,board in boards.items():
             self.assertNotEqual(name,board['soc'])
             self.assertTrue(board['name'])
@@ -35,7 +35,7 @@ class HardwareProfiles(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit,'profile differs'):
                 aster_board.get_hardware('fakepod-s31')
 
-    def test_hardware_memory_and_capabilities_checked(self):
+    def test_hardware_memory_limit_and_runtime_capabilities(self):
         target=aster_board.get_hardware('osptek-p4')
         manifest={'id':'test.app','product':'aster','target_id':'riscv',
                   'abi':{'min':'4.0.0','target':target['abi']},
@@ -46,8 +46,7 @@ class HardwareProfiles(unittest.TestCase):
             validate_manifest(manifest,target)
         manifest['memory']['max']=8388608
         manifest['requires']=['media-player']
-        with self.assertRaisesRegex(ValueError,'lacks required capabilities'):
-            validate_manifest(manifest,target)
+        validate_manifest(manifest,target)
 
     def test_source_cli_forwards_hardware_without_native_subcommand(self):
         import aster

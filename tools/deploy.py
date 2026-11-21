@@ -67,7 +67,7 @@ def main(argv=None):
     port, pong = aster_send.find_port(args.port, brd=target)
     if not port:
         raise RuntimeError("no device answered the deployment probe")
-    validate_device(pong, target, manifest.get("requires", []))
+    validate_device(pong, target)
     remote = target["deployment"]["package_dir"] + "/" + manifest["id"] + ".ast"
     console = args.console or (port if "serial=shared" in pong else target["console"])
     shared = console == port and "serial=shared" in pong

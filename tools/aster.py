@@ -36,7 +36,7 @@ def executable(name):
 
 def tool_command(kind):
     if os.name == 'nt':
-        binary = executable('aster-toolchain' if kind == 'build' else 'aster-device')
+        binary = executable('aster-toolchain' if kind in ('build', 'verify') else 'aster-device')
         if binary:
             try:
                 check_sibling(binary)
@@ -48,7 +48,7 @@ def tool_command(kind):
                 return [str(binary)]
         if getattr(sys, 'frozen', False):
             raise ValueError('Keep aster.exe, aster-toolchain.exe and aster-device.exe together')
-    script = 'build.py' if kind == 'build' else 'windows_device.py'
+    script = {'build': 'build.py', 'verify': 'verify_ast.py', 'device': 'windows_device.py'}[kind]
     return [sys.executable, str(ROOT / 'tools' / script)]
 
 
@@ -367,7 +367,7 @@ def main(argv=None):
         cmd = commands.add_parser(name)
         cmd.add_argument('project', nargs='?', default='.')
         cmd.add_argument('--target')
-        cmd.add_argument('--hardware', help='physical board ID from hardware/')
+        cmd.add_argument('--hardware', help='optional bundled board alias for selecting a CPU architecture')
         aot = cmd.add_mutually_exclusive_group()
         aot.add_argument('--aot', action='store_true')
         aot.add_argument('--no-aot', action='store_true')
@@ -433,18 +433,16 @@ def main(argv=None):
         args.package /= manifest['app']['id'] + '.ast'
         args.run = True
     else:
-        target = target_for(args.target)
+        target = args.target if args.command == 'verify' else target_for(args.target)
     package = args.package.resolve()
     if not package.is_file():
         raise ValueError(f'Package missing: {package}; run aster build first')
     if args.command == 'verify':
-        binary = executable('aster-toolchain') if os.name == 'nt' else None
-        command = (
-            [str(binary), 'verify']
-            if binary
-            else [sys.executable, str(ROOT / 'tools/verify_ast.py')]
-        )
-        command += ['--target', target]
+        command = tool_command('verify')
+        if len(command) == 1:
+            command.append('verify')
+        if target:
+            command += ['--target', target]
         if args.pubkey:
             command += ['--pubkey', str(args.pubkey)]
         command.append(str(package))

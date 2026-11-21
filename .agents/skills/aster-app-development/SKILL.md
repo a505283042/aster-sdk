@@ -5,7 +5,11 @@ description: 使用 Aster APP SDK ABI 4.5 开发 C/WASM/AOT 应用。当用户�
 
 # Aster APP 开发
 
-配套固件与桌面调试见 [开发包使用说明](../../../docs/使用说明.md)。物理板型使用 `--hardware osptek-p4`（鱼鹰光电 P4C5，480×480）、`--hardware lckfb-s3`（立创实战派）或 `--hardware fakepod-s31`（FAKE POD NANO PRO）。工具自动选择 AOT 架构；`riscv`/`xtensa` 仅表示编译架构，不代表具体硬件。板型构建产物位于 `dist/架构/板型/`。`aster firmware` 下载固定固件并校验，烧录时显式选择板型和串口。先编译，再用 `aster sim --profile osptek-p4`（或 `lckfb`）`--app 工程目录` 导入程序和资源；也可用 `--resources` 指定资源根目录。模拟器运行 WASM，实机运行 AOT。串口安装前返回设备桌面，资源应包含在安装包内。
+默认按架构开发。新建工程用 `aster init 工程 --template hello --id com.example.hello --target riscv` 或 `--target xtensa`，已有工程执行 `aster build` 沿用 `[sdk].target`。同一源码按需要为两个架构分别构建，默认产物在 `dist/<架构>/<应用ID>.ast`。布局读取 `aster_display_get_info`，可选外设用 `aster_system_has_feature` 查询，并在 `[app]` 区分 `requires` 和 `optional`。
+
+同架构、同 AOT 配置的新板直接使用架构包。开发 APP 不要求板号，也无需读取固件仓库或增加 SDK 板型文件。固件每次启动时检查 `requires`；可选能力由 APP 查询并降级。`--hardware` 仅作为已有板型的架构简称使用，如 `--hardware fakepod-s31` 选择 `riscv`，产物独立写入 `dist/riscv/fakepod-s31/`。通用 APP 省略 `supported_boards`。专用 APP 可在 `[app]` 中声明 `supported_boards = ["fakepod-s31"]`，使用设备报告的 `board` 原值，可列出多个 ID。新版固件在启动时匹配；可用 `aster verify 文件.ast` 离线读取声明。商城按包声明筛选，发布配置可以缩小分发范围。实测机型按发布版本另行记录。
+
+烧录固件时显式选择板型和串口。先构建，再用 `aster sim --profile osptek-p4 --app 工程目录`（或 `--profile lckfb`）调试，外部资源可用 `--resources` 指定。模拟器执行 WASM，实机执行 AOT。串口安装前返回设备桌面，安装包应包含所需资源。详见[开发包使用说明](../../../docs/使用说明.md)。
 
 首先完整读取 [SDK 开发手册](../../../docs/app-development.md)。该路径相对本 SKILL.md；它是唯一开发参考，包含完整示例、公开 ABI、辅助库、工程配置和命令。
 
