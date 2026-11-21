@@ -2,7 +2,7 @@
 
 SDK 提供 `aster server`，使用 Python 标准库；Windows、WSL 已验证，macOS 尚未实测。
 当前用于局域网初始化。与 APPS 仓库的商城服务器配合使用：初始化服务默认 9081，
-商城目录与游戏包仍由商城服务器的 9080 提供。两者职责和数据目录独立。
+商城目录与游戏包由商城服务器的 9080 提供。默认公网源使用 OBS，此处的本地服务器用于开发或自托管。两者职责和数据目录独立。
 
 ## 发布资源
 
@@ -20,6 +20,12 @@ python tools/aster.py server --data build/setup-data publish `
   --fonts ../aster-firmware/resources/fonts `
   --store ../aster-apps/AppStore/dist/xtensa/aster.store.ast `
   --board aster.esp32s3.lckfb --target xtensa --screen 240x320 `
+  --version 1.0.0 --market-url http://192.168.110.154:9080
+
+python tools/aster.py server --data build/setup-data publish `
+  --fonts ../aster-firmware/resources/fonts `
+  --store ../aster-apps/AppStore/dist/riscv/aster.store.ast `
+  --board fakepod-s31 --target riscv --screen 460x460 `
   --version 1.0.0 --market-url http://192.168.110.154:9080
 
 python tools/aster.py server --data build/setup-data start --host 0.0.0.0 --port 9081

@@ -1,6 +1,6 @@
 # GitHub static distribution
 
-The public channel needs no running Python server or device credentials. Its entry
+The default device channel is [Huawei OBS](https://aster-releases.obs.cn-south-1.myhuaweicloud.com/aster-source.json). The separate GitHub mirror needs no running Python server or device credentials. Its entry
 is `https://github.com/hello-myj/aster-releases/releases/latest/download/aster-source.json`.
 The descriptor contains a pinned immutable `base_url`. Setup profiles, catalogs,
 manifest pages, icons and content-addressed blobs all belong to that release.
@@ -8,7 +8,7 @@ The device never calls the GitHub REST API. Existing local HTTP server URLs rema
 
 ## Export locally
 
-The APPS publisher builds Store and TouchTest for both boards, verifies the AOT
+The APPS publisher prepares the two Store AOT architectures and stages profiles for the OSPTEK P4C5, lckfb and FAKE POD boards, verifies the AOT
 packages, stages the existing setup/market schemas, then invokes the SDK exporter:
 
 ```sh
@@ -26,14 +26,14 @@ The lower-level SDK command accepts previously published local input directories
 
 ```sh
 python tools/aster.py distribute export --setup-data SETUP_DATA --store-data STORE_DATA \
-  --board osptek-p4-st7102 --board aster.esp32s3.lckfb \
+  --board osptek-p4-st7102 --board aster.esp32s3.lckfb --board fakepod-s31 \
   --repository hello-myj/aster-releases --tag public-example --output build/export-example
 ```
 
 The output must not already exist. Metadata and payload checksums, bounded JSON,
 hardware identity, resource paths and package integrity are checked before the
 output is made visible. Identical font/resource blobs are shared across boards.
-The first implementation caps a release at 1,000 assets, each below 2 GiB; large
+The GitHub exporter caps a release at 1,000 assets, each below 2 GiB; large
 resource trees need fewer applications per release or a later bundled format.
 
 ## Publish
@@ -54,7 +54,7 @@ and reachability must be checked on the device's actual network.
 
 ## Device maintenance
 
-New firmware supplies the public source as the Web provisioning default. A fresh
+The Web provisioning default comes from the firmware distribution configuration (currently OBS). A fresh
 card still starts at the welcome screen and asks the user to connect Wi-Fi.
 An already healthy card boots without contacting GitHub. Existing saved local
 server settings are preserved.

@@ -2,7 +2,7 @@
 
 日常开发按 CPU 架构创建工程，例如 `aster init my-app --template hello --id com.example.hello --target riscv`，之后执行 `aster build my-app`。在立创 ESP32-S3 实战派上选 `xtensa`，在鱼鹰光电 P4C5 和 FAKE POD NANO PRO 上选 `riscv`。可通过串口部署，或用 `aster sim --profile osptek-p4 --app 工程目录` 在桌面调试。模拟器执行 WASM，实机执行对应架构的 AOT。串口安装使用包含 `assets` 资源的包，模拟器也可用 `--resources` 导入外部资源。详见[开发包使用说明](使用说明.md)。
 
-适用版本：SDK ABI **4.5.0**；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4、ESP32-S31，RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。契约基线见 `contract/lock.json`。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
+适用版本：SDK ABI **4.5.0**；应用 CPU 目标为 **xtensa**（ESP32-S3）与 **riscv**（ESP32-P4、ESP32-S31，RV32 ILP32F）。P4 和 lckfb 已验证显示、触摸、串口安装及商城下载。源码契约基线见 `contract/lock.json`；已发布的便携包与组件版本见 [配套组件](development-kit.md)。源码模拟器可调试声明 ABI 4.5 的通用逻辑，系统播放器后端和蓝牙音频链路由实机验证。应用编译使用 `--target`；设备固件由 `aster firmware` 管理。4.x 不兼容 3.x，旧应用需重新编译。
 
 本文是独立开发所需的完整参考：创建工程、配置、生命周期、绘图、输入、资源、设备接口、构建、部署及排错。本文中的类型和函数签名来自此版本 SDK 的公开契约。阅读本文即可编写 APP；不需要再读取固件代码、SDK 头文件、模板代码或工具实现。编译器会自动使用 SDK 自带的头文件和辅助库。
 

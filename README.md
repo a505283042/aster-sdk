@@ -2,7 +2,7 @@
 
 应用开发仓库。代码包含 `<aster/aster.h>`，通过 `aster_*` 调用设备功能。当前 ABI 为 4.5.0，CPU 目标为 `xtensa`（ESP32-S3）和 `riscv`（ESP32-P4、ESP32-S31）。3.x 包需要用本 SDK 重新编译后再安装。
 
-网络代码继续调用 `aster_network_*`、`aster_http_*`、`aster_mqtt_*`、`aster_ws_*`。这些函数在 `lib/aster/aster_netlib.c` 里转到六个导入：`aster_net_info`、`aster_net_open`、`aster_net_io`、`aster_net_status`、`aster_net_cancel`、`aster_net_close`。应用 manifest 的 `abi_min` 设为 `4.0`。
+网络代码继续调用 `aster_network_*`、`aster_http_*`、`aster_mqtt_*`、`aster_ws_*`。这些函数在 `lib/aster/aster_netlib.c` 里转到六个导入：`aster_net_info`、`aster_net_open`、`aster_net_io`、`aster_net_status`、`aster_net_cancel`、`aster_net_close`。仅使用上述网络接口时，最低 ABI 可设为 4.0。使用后续新增导入时，按所用接口提高 `abi_min`；例如系统播放器的蓝牙设备枚举需要 4.5。
 
 接口说明在 [APP 开发手册](docs/app-development.md)。
 
@@ -42,7 +42,7 @@ aster run --port <串口>
 `hello` 是最小示例，`swipe-game` 带滑动和音效，`scene-list` 是滚动设置页。输出在项目的 `build/xtensa/` 和 `dist/xtensa/`。设备只运行 AOT。`--no-aot` 只用于模拟器和主机测试。
 
 ```bash
-aster verify dist/xtensa/<应用>.ast --target xtensa
+aster verify dist/xtensa/<应用>.ast
 aster deploy dist/xtensa/<应用>.ast --target xtensa --port <串口> --run
 ```
 
@@ -74,7 +74,7 @@ orientation = "landscape"
 ## 更新契约
 
 ```bash
-python tools/import_contract.py /path/to/aster-contract-4.2.0.zip
+python tools/import_contract.py /path/to/aster-contract-4.5.0.zip
 python -m unittest discover -s tests -v
 ```
 
@@ -82,4 +82,4 @@ python -m unittest discover -s tests -v
 
 发布步骤见 [docs/release.md](docs/release.md)。命令说明见 [docs/sdk-cli.md](docs/sdk-cli.md)。许可见 [NOTICE.md](NOTICE.md)。
 
-当前正式版本为 `sdk-v4.1.0`；下载本机平台的完整开发包即可获得 APP SDK、匹配的两款固件和便携模拟器。功能边界与已完成验证范围见 [连续音效说明](docs/continuous-audio.md)。
+源码契约为 ABI 4.5.0。已发布的便携开发包 `sdk-v4.3.0` 提供 ABI 4.3 工具，按需下载该版本固定的固件镜像和 Windows 桌面模拟器。开发 FAKE POD 的系统播放器请使用 4.5 源码工具链和相应固件。[SDK Release](https://github.com/hello-myj/aster-sdk/releases) · [组件与镜像](docs/development-kit.md)

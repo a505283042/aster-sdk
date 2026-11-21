@@ -4,7 +4,7 @@ SDK 提供 `aster` 命令。项目只需要 `app.toml`、源代码和素材，�
 
 ## Linux 安装与环境
 
-当前便携包支持 x86_64 Linux、Python 3.12，包含 Python 依赖及 wasi-sdk / Xtensa wamrc。完整解压后运行 `./aster install`，再 `source env.sh`。以下 `./bin/aster` / venv 安装步骤针对 SDK 源码仓库（Python 3.11+）。Python 版本太旧时，先通过发行版包管理器安装 Python 3.11+ 和对应 venv 包（例如 Ubuntu 24.04 的 `python3 python3-venv`）。
+当前便携包支持 x86_64 Linux、Python 3.12，包含 Python 依赖及 wasi-sdk / AOT 编译器。完整解压后运行 `./aster install`，再 `source env.sh`。以下 `./bin/aster` / venv 安装步骤针对 SDK 源码仓库（Python 3.11+）。Python 版本太旧时，先通过发行版包管理器安装 Python 3.11+ 和对应 venv 包（例如 Ubuntu 24.04 的 `python3 python3-venv`）。
 
 ```bash
 cd /path/to/aster-sdk
@@ -19,7 +19,7 @@ aster doctor
 
 ## Windows 安装与环境
 
-完整解压到固定目录，保留三个 EXE 和 `runtime/`、`tools/`、`toolchain/` 等所有子目录。便携包包含 Python 依赖、Wasm 编译器和 Xtensa AOT 编译器，不需要安装 Python、WSL 或 Visual Studio。
+完整解压到固定目录，保留三个 EXE 和 `runtime/`、`tools/`、`toolchain/` 等所有子目录。便携包包含 Python 依赖、Wasm 编译器和各目标的 AOT 编译器，不需要安装 Python、WSL 或 Visual Studio。
 
 ```powershell
 cd <SDK目录>
@@ -30,7 +30,7 @@ aster doctor
 
 `--add-path` 更新当前用户 PATH，不要求管理员权限；新开的终端生效。PowerShell 当前终端使用 `. .\env.ps1`；CMD 使用 `call env.cmd`。移动安装目录后，请在新位置重新执行安装并删除旧 PATH 项。
 
-开发 SDK 源码时，也可使用 `bin\aster.cmd`（优先调用 `dist\windows\aster.exe`，没有 EXE 时调用 Python 3.11+）；源码依赖环境使用 `.venv-windows`，与 Linux 的 venv 分开。源码方式需要本机 Windows wasi-sdk 和 Xtensa wamrc，发布 EXE 已包含这些工具。原生 EXE 打包入口是 `tools/package_windows.ps1`。
+开发 SDK 源码时，也可使用 `bin\aster.cmd`（优先调用 `dist\windows\aster.exe`，没有 EXE 时调用 Python 3.11+）；源码依赖环境使用 `.venv-windows`，与 Linux 的 venv 分开。源码方式需要本机 Windows wasi-sdk 和 AOT 编译器，发布 EXE 已包含这些工具。原生 EXE 打包入口是 `tools/package_windows.ps1`。
 
 ## 创建、编译、运行
 
@@ -44,26 +44,26 @@ aster build
 aster run
 ```
 
-- `templates`：列出内置模板。目前有 `hello`（最小生命周期示例）和 `swipe-game`（滑动控制的落块游戏，含图标和四种音效）。
+- `templates`：列出内置模板。包括 `hello`、`swipe-game` 和滚动设置页 `scene-list`。
 - `init <目录>`：创建项目，拒绝覆盖已有目录。目录可以在 SDK 之外。
 - `--template`：选择模板，默认 `hello`。
 - `--id`：应用唯一标识，建议使用 `com.example.game`；省略时从目录名生成 `app.<目录名>`。更改名称不必更改 ID。
 - `--name`：安装到设备后显示的应用名称，省略时使用目录名。
-- `--target`：CPU 平台，保存到项目 `app.toml` 的 `[sdk] target` 中。当前支持 `xtensa`（ESP32-S3）和 `riscv`（ESP32-P4）。SDK 不提供开发板选择，也不接受 `--board`。以 `aster targets` 输出为准。
+- `--target`：CPU 平台，保存到项目 `app.toml` 的 `[sdk] target` 中。当前支持 `xtensa`（ESP32-S3）和 `riscv`（ESP32-P4、ESP32-S31）。构建可用 `--hardware` 指定已知板型作为架构简称；新板可以沿用已有架构。以 `aster targets` 输出为准。
 - `build [项目目录]`：编译并验证 `.ast` 包，省略目录时使用当前目录。真实设备必须包含 AOT；`--aot` 强制开启，`--no-aot` 仅用于模拟器/主机测试。设备安装和启动均不回退 WASM。
 - `run [项目目录]`：编译、传输、安装并启动应用。`--no-build` 使用已有包。
 - `--port`：文件传输端口，填系统枚举到的串口，例如 `aster run --port <串口>`。探测返回 `serial=shared` 时，安装和运行使用同一个端口。上传前关闭占用该口的监视器。
 
 Linux 串口需要当前用户具有读写权限；通常由设备所属的 dialout/uucp 组控制，按发行版配置后重新登录。`install` 不自动修改用户组或使用 sudo。
 
-平台优先级：命令行 `--target` > 项目 `[sdk].target` > `ASTER_TARGET` > SDK 仅有的一个平台。输出固定在项目的 `build/<target>/` 和 `dist/<target>/<id>.ast`。部署必须同时给出 `--port`，不要从板号推断端口或面板尺寸。新增素材或多个 C 文件在 `app.toml` 的 `assets` / `sources` 中声明。
+平台优先级：命令行 `--target` > 项目 `[sdk].target` > `ASTER_TARGET` > SDK 仅有的一个平台。按架构构建时，输出在项目的 `build/<target>/` 和 `dist/<target>/<id>.ast`。部署必须同时给出 `--port`，不要从板号推断端口或面板尺寸。显式使用 `--hardware` 时，输出在架构目录下按简称再分一层。新增素材或多个 C 文件在 `app.toml` 的 `assets` / `sources` 中声明。
 
 ## 其他命令
 
 ```text
 aster targets
 aster doctor
-aster verify dist/xtensa/com.example.mygame.ast --target xtensa
+aster verify dist/xtensa/com.example.mygame.ast
 aster deploy dist/xtensa/com.example.mygame.ast --target xtensa --port <串口> --run
 aster ports
 aster probe --port <串口>
@@ -72,7 +72,7 @@ aster screenshot screen.png --console <串口>
 aster shell --console <串口> aster sys info
 ```
 
-`doctor` 检查依赖与工具链位置；`verify` 离线检查包；`deploy` 只传输和安装现成包，`--run` 安装后启动。`debug` 查看串口日志，`screenshot` 保存实机 PNG。设备子命令的其他参数通过 `aster <命令> --help` 查询。
+`doctor` 检查依赖与工具链位置；`verify` 从包中读取目标架构，并显示板型及必需能力；`deploy` 只传输和安装现成包，`--run` 安装后启动。`debug` 查看串口日志，`screenshot` 保存实机 PNG。设备子命令的其他参数通过 `aster <命令> --help` 查询。
 
 `aster env --shell bash` / `powershell` / `cmd` 输出激活当前 SDK 的命令，`aster source` 是别名。例如 Linux `eval "$(aster env --shell bash)"`，PowerShell `aster env --shell powershell | Out-String | Invoke-Expression`。子进程不能直接修改父终端环境，因此要 source/执行输出的环境脚本。
 
