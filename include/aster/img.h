@@ -58,6 +58,31 @@ typedef struct {
 	uint32_t reserved;
 } aster_img_render_args_t;
 
+/* Optional S31 cover fast path, still using aster_img_render (same import).
+ * Version 2 preserves the exact 40-byte V1 prefix for ABI compatibility.
+ * Old firmware returns ASTER_EINVAL: apps MUST retry V1/TJpgDec then.
+ *
+ * src_offset/src_length: a bounded JPEG region in a sandboxed MP3/FLAC
+ * or an independent JPEG file (both 0 => whole file). No extracted JPEG
+ * temp file is needed. Guest destinations must be distinct and have
+ * at least cap_w*cap_h*2 bytes each. DMA NEVER uses guest pointers.
+ * Output RGB565 and dim RGB565 have tightly packed out_w-pixel rows.
+ * On error neither destination buffer is committed and result_flags=0.
+ */
+#define ASTER_IMG_COVER_VERSION 2u
+#define ASTER_IMG_COVER_R_HW_JPEG  (1u << 0)
+#define ASTER_IMG_COVER_R_PPA_DIM  (1u << 1)
+#define ASTER_IMG_COVER_R_CPU_DIM  (1u << 2)
+typedef struct {
+    uint32_t size, version;
+    uint32_t dst_off, dst_span, cap_w, cap_h, out_w, out_h, flags, reserved;
+    uint32_t src_offset, src_length, dim_off, dim_span;
+    uint32_t result_flags, reserved2;
+} aster_img_cover_render_args_t;
+
+
+
+
 /* Identify format + dimensions WITHOUT decoding (header read only).
  * out_w/out_h carry the firmware's fit estimate against the panel (what a
  * render at full display size would produce), so the app can size its
